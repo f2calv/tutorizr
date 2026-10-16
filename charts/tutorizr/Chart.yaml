@@ -1,0 +1,14 @@
+apiVersion: v2
+name: tutorizr
+description: Umbrella chart for tutorizr, a German language tutor answering a Signal group through the Agent Runtime.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+sources:
+  - https://github.com/f2calv/tutorizr
+
+dependencies:
+  - name: workload
+    version: 1.1.0
+    repository: oci://ghcr.io/f2calv/charts
+    alias: tutorizr

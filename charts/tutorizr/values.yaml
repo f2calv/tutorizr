@@ -1,0 +1,51 @@
+# Public-safe defaults keep the workload dormant. A deployment supplies Redis, the Signalizr and
+# Agent Runtime addresses and the Key Vault identity through environment variables and Secrets.
+# Nothing in this file may contain a phone number, a group id, a hostname or a credential.
+
+tutorizr:
+  replicaCount: 0
+  # Comms is the group's single gRPC subscriber, so old and new pods must never overlap.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  fullnameOverride: tutorizr
+  image:
+    repository: ghcr.io/f2calv/tutorizr
+    pullPolicy: IfNotPresent
+    tag: ""
+  service:
+    enabled: true
+    name: http
+    type: ClusterIP
+    port: 80
+    containerPort: 8080
+    protocol: TCP
+  envVars:
+    CasCap__FeatureConfig__EnabledFeatures: Comms,Mcp
+  startupProbe:
+    httpGet:
+      path: /healthz
+      port: 8080
+    periodSeconds: 10
+    failureThreshold: 12
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: 8080
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8080
+    periodSeconds: 20
+    failureThreshold: 3
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi

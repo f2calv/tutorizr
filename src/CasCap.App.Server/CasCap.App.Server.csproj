@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>CasCap.App.Server</AssemblyName>
+  </PropertyGroup>
+
+  <!-- appsettings live at the repository root so every project, including tests, binds the same base. -->
+  <ItemGroup>
+    <Content Include="..\..\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="Always" />
+    <Content Include="..\..\appsettings.Development.json" Link="appsettings.Development.json" CopyToOutputDirectory="Always" />
+    <Content Include="..\..\appsettings.Local.json" Link="appsettings.Local.json" CopyToOutputDirectory="Always" Condition="Exists('..\..\appsettings.Local.json')" />
+    <Content Include="..\..\appsettings.Local.Development.json" Link="appsettings.Local.Development.json" CopyToOutputDirectory="Always" Condition="Exists('..\..\appsettings.Local.Development.json')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CasCap.App.Server.Tests" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <PackageReference Include="CasCap.Api.Azure.Auth" />
+    <PackageReference Include="CasCap.Common.Caching" />
+    <PackageReference Include="CasCap.Common.Configuration" />
+    <PackageReference Include="CasCap.Common.Hosting.AspNetCore" />
+    <!-- TODO: reference the CasCap.Comms.AI package once a release containing the Agent Runtime responder is published. -->
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'!='Release'">
+    <ProjectReference Include="..\..\..\CasCap.Api.Azure\src\CasCap.Api.Azure.Auth\CasCap.Api.Azure.Auth.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Caching\CasCap.Common.Caching.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Configuration\CasCap.Common.Configuration.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Hosting.AspNetCore\CasCap.Common.Hosting.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\signalizr\src\CasCap.Comms.AI\CasCap.Comms.AI.csproj" />
+  </ItemGroup>
+
+</Project>

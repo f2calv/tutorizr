@@ -1,0 +1,47 @@
+<Project>
+
+  <PropertyGroup>
+    <RootNamespace>CasCap</RootNamespace>
+    <LangVersion>14.0</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>3f0c9b52-6a0e-4c47-9d1b-7e2a4c8d5b61</UserSecretsId>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Alex Vincent</Authors>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageProjectUrl>https://github.com/f2calv/tutorizr</PackageProjectUrl>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Tests'))">
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' OR '$(TF_BUILD)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GitRepository" Value="$(GitRepository)" Condition="'$(GitRepository)' != ''"/>
+    <AssemblyMetadata Include="GitBranch" Value="$(GitBranch)" Condition="'$(GitBranch)' != ''"/>
+    <AssemblyMetadata Include="GitCommit" Value="$(SourceRevisionId)" Condition="'$(SourceRevisionId)' != ''"/>
+    <AssemblyMetadata Include="BuildWorkflow" Value="$(BuildWorkflow)" Condition="'$(BuildWorkflow)' != ''"/>
+    <AssemblyMetadata Include="BuildRunId" Value="$(BuildRunId)" Condition="'$(BuildRunId)' != ''"/>
+    <AssemblyMetadata Include="BuildRunNumber" Value="$(BuildRunNumber)" Condition="'$(BuildRunNumber)' != ''"/>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- NETSDK1233 - Targeting .NET 10.0 or higher in Visual Studio 2022 XX.XX is not supported. -->
+    <NoWarn>NETSDK1233</NoWarn>
+    <!-- NuGet advisories remain visible without making an unchanged transitive advisory fail the build. -->
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+</Project>

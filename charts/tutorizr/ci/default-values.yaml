@@ -1,0 +1,4 @@
+tutorizr:
+  replicaCount: 1
+  image:
+    tag: test
