@@ -1,7 +1,7 @@
 # tutorizr
 
-Umbrella chart for tutorizr, a German language tutor that answers a Signal group through the
-CasCap Agent Runtime and serves its learner tools over MCP.
+Umbrella chart for tutorizr, a tutor (German in the proof of concept) that answers a Signal group
+through the CasCap Agent Runtime and serves its learner tools over MCP.
 
 ## Overview
 

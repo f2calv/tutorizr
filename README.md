@@ -1,12 +1,16 @@
 # tutorizr
 
-A German language tutor that you talk to in a Signal group. It answers through the CasCap Agent
-Runtime, keeps track of your vocabulary and mistakes, and works towards the Goethe-Institut B1
-level.
+A tutor that you talk to in a Signal group. It answers through the CasCap Agent Runtime and keeps
+track of your vocabulary and mistakes.
 
-> Status: early scaffold. The Signal chat path, the learner tools and the deployment chart exist;
-> the tutor's agent definition, German voice settings and retrieval of B1 word lists are not yet
-> in place.
+German is the proof of concept: the first tutor definition teaches German from CEFR A1 to B2,
+aiming at the Goethe-Institut exams. The host itself is not tied to a language. The subject,
+levels and teaching style live in the agent definition, so the same deployment could tutor another
+topic with a different definition. The learner tools are language-oriented (vocabulary, CEFR level,
+mistakes); no further work towards other subjects is planned yet.
+
+> Status: early. The Signal chat path, the learner tools and the deployment chart exist; German
+> voice settings and retrieval of CEFR word lists are not yet in place.
 
 ## Service Architecture
 
@@ -38,7 +42,7 @@ flowchart LR
 
 - **Comms** subscribes to the chat group through Signalizr, sends each message (including voice
   notes transcribed by speech-to-text) to the `TutorAgent` definition in the Agent Runtime, and
-  replies with text and, optionally, synthesised German speech.
+  replies with text and, optionally, synthesised speech (German in the proof of concept).
 - **Mcp** serves the tutor's tools to the Agent Runtime at `/mcp`, protected by Basic
   authentication and rejecting browser `Origin` headers.
 
