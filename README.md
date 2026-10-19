@@ -9,8 +9,8 @@ levels and teaching style live in the agent definition, so the same deployment c
 topic with a different definition. The learner tools are language-oriented (vocabulary, CEFR level,
 mistakes); no further work towards other subjects is planned yet.
 
-> Status: early. The Signal chat path, the learner tools and the deployment chart exist; German
-> voice settings and retrieval of CEFR word lists are not yet in place.
+> Status: early. The Signal chat path, the learner tools, German voice and the deployment chart
+> exist; retrieval of CEFR word lists is not yet in place.
 
 ## Service Architecture
 
@@ -80,7 +80,22 @@ overrides belong in the gitignored `appsettings.Local.json` and `appsettings.Loc
 | `CasCap:SignalizrClientConfig` | Signalizr REST and gRPC addresses and subscriber name |
 | `CasCap:AgentRuntimeClientOptions` | Agent Runtime base address |
 | `CasCap:AgentRuntimeAzureAuthConfig` | Microsoft Entra execution identity; loaded from Key Vault prefix `AgentRuntime--Tutorizr--Exec` |
-| `CasCap:SpeechToTextConfig`, `CasCap:TextToSpeechConfig` | German voice processing; disabled by default |
+| `CasCap:SpeechToTextConfig`, `CasCap:TextToSpeechConfig` | Voice notes and spoken replies; disabled by default |
+
+### Voice
+
+Voice notes are transcribed and answered like text. With `TextToSpeechConfig:Mode` set to
+`MatchInbound`, a reply to a voice note is also spoken. The tracked defaults are German-first:
+
+- **Speech-to-text:** Azure AI Speech chooses between the `AzureLocales` candidates `de-DE` and
+  `en-GB`, so a learner can switch to English for a question. The Whisper providers use `Language`
+  (`de`) instead.
+- **Text-to-speech:** `de-DE-SeraphinaMultilingualNeural` speaks German natively and can also read
+  the English explanations the tutor gives on request.
+- **Authentication:** both Azure AI Speech clients use the host's `AzureAuthConfig` credential,
+  which needs the Cognitive Services Speech User role on the Speech account; there is no key.
+- **Privacy:** audio is never forwarded to the Agent Runtime, only the transcript. Transcripts reach
+  the monitor group only when `CommsConfig:EchoTranscriptToDebugChat` is enabled.
 
 ### Configuration Examples
 
@@ -108,8 +123,16 @@ Chat with voice, pointing at a gateway and runtime:
       "GrpcAddress": "http://signalizr.example.svc:5001"
     },
     "AgentRuntimeClientOptions": { "BaseAddress": "http://agent-runtime.example.svc" },
-    "SpeechToTextConfig": { "Mode": "Enabled", "Language": "de" },
-    "TextToSpeechConfig": { "Mode": "MatchInbound", "AzureSpeechVoice": "de-DE-KatjaNeural" }
+    "SpeechToTextConfig": {
+      "Mode": "Enabled",
+      "Provider": "Azure",
+      "AzureEndpoint": "https://speech.example.com/"
+    },
+    "TextToSpeechConfig": {
+      "Mode": "MatchInbound",
+      "Provider": "AzureSpeech",
+      "AzureSpeechEndpoint": "https://speech.example.com/"
+    }
   }
 }
 ```
