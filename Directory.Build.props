@@ -17,7 +17,7 @@
     <Authors>Alex Vincent</Authors>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageProjectUrl>https://github.com/f2calv/tutorizr</PackageProjectUrl>
-    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(MSBuildProjectName.Contains('Tests'))">
