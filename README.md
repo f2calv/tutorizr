@@ -18,10 +18,9 @@ CEFR word-list retrieval or exam-content collection.
 
 ## Run the Learner Tools Locally
 
-Use the .NET 10 SDK and an existing Redis instance. Debug builds also need adjacent
-`CasCap.Common`, `CasCap.Api.Azure`, `CasCap.Api.Voice`, `signalizr` and `agentizr` source checkouts
-in the layout described in the [host development guide](src/CasCap.App.Server/README.md#development).
-Disabling Comms at runtime does not remove those compile-time dependencies.
+Use the .NET 10 SDK and an existing Redis instance. Release builds resolve every dependency from
+NuGet; Debug builds instead use adjacent source checkouts, as described in the
+[host development guide](src/CasCap.App.Server/README.md#development).
 
 Merge the following into the gitignored root `appsettings.Local.Development.json` before starting
 the host. These are local-only example credentials, not deployment credentials:

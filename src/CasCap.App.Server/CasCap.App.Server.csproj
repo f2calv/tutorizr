@@ -21,10 +21,10 @@
 
   <ItemGroup Condition="'$(Configuration)'=='Release'">
     <PackageReference Include="CasCap.Api.Azure.Auth" />
+    <PackageReference Include="CasCap.Comms.AI" />
     <PackageReference Include="CasCap.Common.Caching" />
     <PackageReference Include="CasCap.Common.Configuration" />
     <PackageReference Include="CasCap.Common.Hosting.AspNetCore" />
-    <!-- TODO: reference the CasCap.Comms.AI package once a release containing the Agent Runtime responder is published. -->
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)'!='Release'">

@@ -144,9 +144,8 @@ adjacent `CasCap.Common`, `CasCap.Api.Azure` and `signalizr` projects; their dep
 requires adjacent `CasCap.Api.Voice` and `agentizr` checkouts. Keep those repositories at compatible
 revisions. The Debug solution includes those sources.
 
-Release references pin shared hosting/caching/configuration and Azure authentication packages, but
-the required Comms AI reference is absent in Release. Selecting `Mcp` at runtime does not fix
-that compilation gap. The root release Dockerfile inherits the same limitation.
+Release references pin the published shared hosting, caching, configuration, Azure authentication
+and Comms AI packages, so the Release build and the root Dockerfile need no adjacent checkouts.
 
 The direct MCP package is `ModelContextProtocol.AspNetCore` `2.2.0`; other package versions are
 centralized in [Directory.Packages.props](../../Directory.Packages.props). See the

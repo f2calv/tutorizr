@@ -29,7 +29,7 @@ None: no skip attributes, conditional skip branches or credential gates are decl
 
 ## Running
 
-Use the .NET 10 SDK and the adjacent-source setup in the
+Use the .NET 10 SDK. Debug builds use the adjacent-source setup in the
 [host development guide](../CasCap.App.Server/README.md#development). The project reference compiles
 the host even though these tests do not start it. From the repository root, when explicitly choosing
 to run tests:
