@@ -110,8 +110,7 @@ jobs:
       has-image: false
       #Skipped for the shared workflow's chart-testing argument defect; helm lint still runs above.
       chart-testing-cli-command: skip
-      #Chart publication is intentionally separate from the application release.
-      push-chart: false
+      push-chart: ${{ github.event_name != 'pull_request' }}
 
   release:
     needs: [lint, versioning, build, helm, image, chart]

@@ -3,20 +3,18 @@
 The application umbrella chart for the tutorizr Signal tutor and learner MCP host. It configures
 one `workload` dependency under the `tutorizr` alias, with a single-subscriber rollout strategy.
 
-## Install from Source
+## Installation
 
-Chart publication is disabled in the current repository workflow; use the source chart rather than
-assuming a published tutorizr OCI version. Supply an application image built from a compatible source
-revision: the host's Release dependency wiring is incomplete, as described in the
-[host guide](https://github.com/f2calv/tutorizr/blob/main/src/CasCap.App.Server/README.md).
-The checked-in chart and app versions are `0.1.0`, not evidence of a working released image.
-
-With Helm 3, dependency-registry access and a deliberately selected Kubernetes context:
+Every release publishes the chart to `oci://ghcr.io/f2calv/charts/tutorizr` and the multi-architecture
+image to `ghcr.io/f2calv/tutorizr` under the same version. With Helm 3 and a deliberately selected
+Kubernetes context:
 
 ```powershell
-helm dependency build .\charts\tutorizr
-helm upgrade --install example-tutor .\charts\tutorizr --namespace example-tutor --create-namespace --values .\example-values.yaml
+helm upgrade --install example-tutor oci://ghcr.io/f2calv/charts/tutorizr --version <version> --namespace example-tutor --create-namespace --values .\example-values.yaml
 ```
+
+To install from a source checkout instead, run `helm dependency build .\charts\tutorizr` and pass
+`.\charts\tutorizr` as the chart reference.
 
 Create `example-values.yaml` from the fragment below plus the required deployment settings.
 The commands fetch the dependency and change the selected cluster; they are not a local application
