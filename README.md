@@ -1,134 +1,90 @@
 # tutorizr
 
-A German language tutor that you talk to in a Signal group. It answers through the CasCap Agent
-Runtime, keeps track of your vocabulary and mistakes, and works towards the Goethe-Institut B1
-level.
+tutorizr is a .NET 10 Signal-group tutor host that sends conversations to a separately operated
+Agent Runtime and exposes learner-progress tools over Model Context Protocol (MCP).
+It stores one shared learner's vocabulary, estimated CEFR level and mistakes in Redis.
 
-> Status: early scaffold. The Signal chat path, the learner tools and the deployment chart exist;
-> the tutor's agent definition, German voice settings and retrieval of B1 word lists are not yet
-> in place.
+The tools are German-language oriented, but lesson generation and teaching instructions belong to
+the externally supplied agent definition. This repository does not ship a tutor definition, model,
+CEFR word-list retrieval or exam-content collection.
 
-## Service Architecture
+## Projects
 
-```mermaid
-flowchart LR
-    subgraph signal[Signal]
-        user([Learner])
-    end
-
-    subgraph tutorizr[tutorizr]
-        comms[Comms feature]
-        mcp[Mcp feature<br/>/mcp]
-        store[(Redis<br/>learner progress)]
-    end
-
-    gateway[Signalizr gateway]
-    runtime[Agent Runtime]
-
-    user <--> gateway
-    gateway -- gRPC inbound --> comms
-    comms -- REST replies --> gateway
-    comms -- run TutorAgent --> runtime
-    runtime -- tool calls --> mcp
-    mcp --> store
-
-    classDef external fill:#eee,stroke:#999
-    class gateway,runtime external
-```
-
-- **Comms** subscribes to the chat group through Signalizr, sends each message (including voice
-  notes transcribed by speech-to-text) to the `TutorAgent` definition in the Agent Runtime, and
-  replies with text and, optionally, synthesised German speech.
-- **Mcp** serves the tutor's tools to the Agent Runtime at `/mcp`, protected by Basic
-  authentication and rejecting browser `Origin` headers.
-
-## Tools
-
-| Tool | Hints | Purpose |
+| Unit | Purpose | Availability |
 | --- | --- | --- |
-| `get_learner_profile` | read-only | Target and estimated level, vocabulary backlog and mistake count |
-| `set_learner_level` | idempotent write | Store the learner's estimated CEFR level |
-| `add_vocabulary` | idempotent write | Add a term to spaced-repetition practice, keeping existing progress |
-| `get_due_vocabulary` | read-only | Terms due for review, longest overdue first |
-| `record_vocabulary_review` | write | Record an answer and schedule the next review (Leitner boxes 1 to 5) |
-| `record_mistake` | write | Log a mistake, its correction and the rule |
-| `get_recent_mistakes` | read-only | Most recent mistakes, optionally of one kind |
+| [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Source-based Debug development; Release dependency wiring is incomplete |
+| [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 14 methods, 21 source-declared cases |
+| [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Source chart; defaults to zero replicas |
 
-When `Comms` runs in the same process, the shared poll tools from `CasCap.Comms.AI`
-(`create_poll`, `close_poll`, `get_poll_status`) are also served, so the tutor can ask
-multiple-choice questions in the chat. The Agent Runtime withholds every tool that is not
-read-only unless the definition names it explicitly.
+## Run the Learner Tools Locally
 
-The store holds a single learner; every member of the chat group shares one profile.
+Use the .NET 10 SDK and an existing Redis instance. Release builds resolve every dependency from
+NuGet; Debug builds instead use adjacent source checkouts, as described in the
+[host development guide](src/CasCap.App.Server/README.md#development).
 
-## Configuration
-
-Base values live in [appsettings.json](appsettings.json) with public-safe placeholders; local
-overrides belong in the gitignored `appsettings.Local.json` and `appsettings.Local.Development.json`.
-
-| Section | Purpose |
-| --- | --- |
-| `CasCap:FeatureConfig:EnabledFeatures` | `Comms`, `Mcp` or both |
-| `CasCap:CachingConfig` | Redis connection; required |
-| `CasCap:ApiAuthConfig` | Basic credentials for `/mcp` |
-| `CasCap:TutorConfig` | Target level, Redis keys and mistake retention |
-| `CasCap:CommsConfig` | Chat and monitor group names, agent name and session |
-| `CasCap:SignalizrClientConfig` | Signalizr REST and gRPC addresses and subscriber name |
-| `CasCap:AgentRuntimeClientOptions` | Agent Runtime base address |
-| `CasCap:AgentRuntimeAzureAuthConfig` | Microsoft Entra execution identity; loaded from Key Vault prefix `AgentRuntime--Tutorizr--Exec` |
-| `CasCap:SpeechToTextConfig`, `CasCap:TextToSpeechConfig` | German voice processing; disabled by default |
-
-### Configuration Examples
-
-Minimal local development, with Redis on `localhost` and Key Vault disabled
-(see [appsettings.Development.json](appsettings.Development.json)):
+Merge the following into the gitignored root `appsettings.Local.Development.json` before starting
+the host. These are local-only example credentials, not deployment credentials:
 
 ```json
 {
   "AppConfig": { "KeyVaultName": "skip" },
   "CasCap": {
     "FeatureConfig": { "EnabledFeatures": "Mcp" },
+    "CachingConfig": {
+      "RemoteCacheConnectionString": "localhost:6379,abortConnect=false"
+    },
     "ApiAuthConfig": { "Username": "demo", "Password": "demo" }
   }
 }
 ```
 
-Chat with voice, pointing at a gateway and runtime:
-
-```json
-{
-  "CasCap": {
-    "FeatureConfig": { "EnabledFeatures": "Comms,Mcp" },
-    "SignalizrClientConfig": {
-      "BaseAddress": "http://signalizr.example.svc",
-      "GrpcAddress": "http://signalizr.example.svc:5001"
-    },
-    "AgentRuntimeClientOptions": { "BaseAddress": "http://agent-runtime.example.svc" },
-    "SpeechToTextConfig": { "Mode": "Enabled", "Language": "de" },
-    "TextToSpeechConfig": { "Mode": "MatchInbound", "AzureSpeechVoice": "de-DE-KatjaNeural" }
-  }
-}
-```
-
-## Development
-
-Debug builds reference adjacent checkouts of `CasCap.Common`, `CasCap.Api.Azure`,
-`CasCap.Api.Voice`, `signalizr` and `agentizr` on the same branch.
+From the repository root:
 
 ```powershell
-dotnet build tutorizr.Debug.slnx
-dotnet test --project src/CasCap.App.Server.Tests/CasCap.App.Server.Tests.csproj
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project .\src\CasCap.App.Server\CasCap.App.Server.csproj --configuration Debug --no-launch-profile -- --urls http://localhost:5080
 ```
 
-`deploy.ps1` and `build.ps1` forward to the shared container workflow scripts. Release builds
-cannot yet resolve the Comms AI responder from a published package.
+An MCP client can then connect to `http://localhost:5080/mcp` with HTTP Basic authentication.
+`/healthz` is anonymous. This path starts no Signal subscriber and requires no cloud provider.
+The [host README](src/CasCap.App.Server/README.md) gives the tool contract, configuration precedence
+and full chat prerequisites.
 
-## Privacy
+## Service Architecture
 
-Learner content — vocabulary, mistakes and chat text — stays in Redis and the Agent Runtime
-session and is never logged. Monitor diagnostics exclude message content unless
-`CommsConfig:MonitorContentEnabled` is switched on.
+```mermaid
+flowchart LR
+    Learner([Signal group]) <--> Gateway[Signal gateway]
+    Gateway -- gRPC inbound --> Comms[Comms feature]
+    Comms -- REST replies --> Gateway
+    Comms -- streamed agent run --> Runtime[External Agent Runtime]
+    Runtime -- authenticated tool calls --> Mcp[Mcp feature]
+    Mcp --> Store[(Redis learner state)]
+    Comms --> Queue[(Redis communications state)]
+    classDef external fill:#eee,stroke:#999,color:#222
+    class Learner,Gateway,Runtime external
+```
+
+`Comms` and `Mcp` can run independently or together. Full chat requires a configured gateway group,
+runtime agent definition/session and runtime authentication where enforced. Run only one Comms
+subscriber for the group, with non-overlapping rollouts. When both features are enabled, the host
+also exposes the shared poll tools; MCP-only mode exposes just the seven learner tools.
+
+## Voice and Data Boundaries
+
+Both speech modes are disabled in [the tracked settings](appsettings.json). Enable voice only with
+the selected backend and required native audio tooling configured. Transcription supports Whisper
+ASR, whisper.cpp or Azure AI Speech; spoken replies support Azure Speech, Azure OpenAI or Piper.
+Other synthesis enum values are not implemented adapters. Follow the
+[voice provider and runtime guide](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/README.md)
+instead of treating a provider name as a deployed service.
+
+Successful voice transcription replaces the agent prompt; the audio is not forwarded to the runtime
+by this path. Chat text and transcripts reach the runtime, learner tools persist content in Redis,
+and audio/text reaches the selected speech backend. Local learner tools do not log learner content.
+The separate communications pipeline can disclose content to the operator's monitor group when
+`MonitorContentEnabled` or `EchoTranscriptToDebugChat` is enabled; both default to `false`.
 
 ## License
 
-Released into the public domain under [The Unlicense](LICENSE).
+[MIT](LICENSE).

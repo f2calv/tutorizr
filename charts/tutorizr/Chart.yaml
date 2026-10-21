@@ -9,6 +9,6 @@ sources:
 
 dependencies:
   - name: workload
-    version: 1.1.0
+    version: 1.6.0
     repository: oci://ghcr.io/f2calv/charts
     alias: tutorizr
