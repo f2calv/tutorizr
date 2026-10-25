@@ -14,7 +14,7 @@ CEFR word-list retrieval or exam-content collection.
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
 | [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 14 methods, 21 source-declared cases |
-| [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Source chart; defaults to zero replicas |
+| [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
 ## Run the Learner Tools Locally
 
