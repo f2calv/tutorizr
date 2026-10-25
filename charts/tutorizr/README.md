@@ -7,9 +7,12 @@ one `workload` dependency under the `tutorizr` alias, with a single-subscriber r
 
 Every release publishes the chart to `oci://ghcr.io/f2calv/charts/tutorizr` and the multi-architecture
 image to `ghcr.io/f2calv/tutorizr` under the same version. With Helm 3 and a deliberately selected
-Kubernetes context:
+Kubernetes context, authenticate to the chart registry before installing. The chart package requires
+a GitHub credential with permission to read the package; do not put that credential in chart values
+or tracked files.
 
 ```powershell
+helm registry login ghcr.io
 helm upgrade --install example-tutor oci://ghcr.io/f2calv/charts/tutorizr --version <version> --namespace example-tutor --create-namespace --values .\example-values.yaml
 ```
 
@@ -27,7 +30,7 @@ startup recipe.
 | `tutorizr.replicaCount` | `0` | The umbrella schema permits only 0 or 1; one subscriber per group |
 | `tutorizr.strategy` | RollingUpdate, `maxSurge: 0`, `maxUnavailable: 1` | Replaces the old pod before starting its replacement |
 | `tutorizr.image.repository` | `ghcr.io/f2calv/tutorizr` | Image reference; availability is not guaranteed by this default |
-| `tutorizr.image.tag` | empty | Supply an explicit usable image tag |
+| `tutorizr.image.tag` | empty | Supply the selected application release version explicitly |
 | `tutorizr.service` | ClusterIP, port 80 → 8080 | Internal HTTP service |
 | `tutorizr.envVars.CasCap__FeatureConfig__EnabledFeatures` | `Comms,Mcp` | Both application features |
 | `tutorizr.startupProbe`, `readinessProbe`, `livenessProbe` | HTTP `/healthz` on 8080 | Application health endpoint |
@@ -36,6 +39,10 @@ startup recipe.
 Zero replicas suppress the dependency's Deployment and Service. It is not a blanket resource
 disable switch: independently enabled dependency resources, such as a ServiceAccount, can still
 render. Preserve the non-overlapping strategy when enabling Comms.
+
+The umbrella's `appVersion` does not propagate to the dependency's default image tag.
+Always set `tutorizr.image.tag` when enabling the workload; leaving it empty selects the shared
+workload chart's application version, not the tutorizr release.
 
 Non-secret merge fragment:
 
@@ -64,16 +71,16 @@ The full values contract belongs to
 the umbrella
 [schema](https://github.com/f2calv/tutorizr/blob/main/charts/tutorizr/values.schema.json)
 and the dependency's
-[values reference](https://github.com/f2calv/helm-charts/blob/workload/1.5.0/charts/workload/README.md).
+[values reference](https://github.com/f2calv/helm-charts/blob/workload/1.6.0/charts/workload/README.md).
 
 ## Dependency Graph
 
 ```mermaid
 graph TD
-    Tutor([tutorizr application chart]) --> Workload[workload 1.5.0, alias tutorizr]
+    Tutor([tutorizr application chart]) --> Workload[workload 1.6.0, alias tutorizr]
 ```
 
-The dependency is pinned to `workload` `1.5.0` from `oci://ghcr.io/f2calv/charts` in
+The dependency is pinned to `workload` `1.6.0` from `oci://ghcr.io/f2calv/charts` in
 [`Chart.yaml`](https://github.com/f2calv/tutorizr/blob/main/charts/tutorizr/Chart.yaml).
 There is no tracked `Chart.lock` in this checkout. The chart owns no templates of its own and bundles
 neither Redis, the Signal gateway nor the Agent Runtime. Its `.helmignore` excludes `ci/`,
