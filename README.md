@@ -18,7 +18,8 @@ CEFR word-list retrieval or exam-content collection.
 
 ## Run the Learner Tools Locally
 
-Use the .NET 10 SDK and an existing Redis instance. Release builds resolve every dependency from
+Use the .NET 10 SDK and the [local Compose dependency](docker-compose.yml), or an existing dedicated
+development Redis instance. Release builds resolve every dependency from
 NuGet; Debug builds instead use adjacent source checkouts, as described in the
 [host development guide](src/CasCap.App.Server/README.md#development).
 
@@ -41,6 +42,7 @@ the host. These are local-only example credentials, not deployment credentials:
 From the repository root:
 
 ```powershell
+docker compose up -d --wait
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project .\src\CasCap.App.Server\CasCap.App.Server.csproj --configuration Debug --no-launch-profile -- --urls http://localhost:5080
 ```

@@ -1,0 +1,20 @@
+# Default: docker compose up -d --wait starts the Redis dependency for the IDE host.
+# Endpoint: Redis localhost:6379; application containers would use redis:6379.
+# Learner/cache data is disposable local state. The application runs separately from the IDE.
+services:
+  redis:
+    image: redis:8
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:6379:6379
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  redis_data:
