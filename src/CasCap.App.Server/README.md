@@ -147,6 +147,6 @@ revisions. The Debug solution includes those sources.
 Release references pin the published shared hosting, caching, configuration, Azure authentication
 and Comms AI packages, so the Release build and the root Dockerfile need no adjacent checkouts.
 
-The direct MCP package is `ModelContextProtocol.AspNetCore` `2.2.0`; other package versions are
+The direct MCP package is `ModelContextProtocol.AspNetCore` `2.3.0`; other package versions are
 centralized in [Directory.Packages.props](../../Directory.Packages.props). See the
 [test project](../CasCap.App.Server.Tests/README.md) for offline checks and their limits.
