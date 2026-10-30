@@ -8,18 +8,20 @@ web host, Redis instance, Signal gateway or Agent Runtime.
 
 | Class | Methods | Cases | Trait |
 | --- | --- | --- | --- |
+| [`AppHostTests`](Tests/Unit/AppHostTests.cs) | 1 | 1 | `Hosting` |
 | [`VocabularyScheduleTests`](Tests/Unit/VocabularyScheduleTests.cs) | 4 | 9 | `Scheduling` |
 | [`TutorMcpQueryServiceTests`](Tests/Unit/TutorMcpQueryServiceTests.cs) | 8 | 10 | `Tools` |
 | [`TutorMcpToolAnnotationTests`](Tests/Unit/TutorMcpToolAnnotationTests.cs) | 2 | 2 | `Tools` |
-| **Total** | **14** | **21** | |
+| **Total** | **15** | **22** | |
 
 These are source-declared counts, not execution results. Four theories expand through 11
-`InlineData` rows; the other ten methods are facts. There are no member/class data providers.
+`InlineData` rows; the other eleven methods are facts. There are no member/class data providers.
 
 ## Traits
 
 | Category | Covers |
 | --- | --- |
+| `Hosting` | Unexpected startup failures return a non-success process result |
 | `Scheduling` | Leitner box promotion, reset and term normalisation |
 | `Tools` | MCP tool behaviour against an in-memory store, and pinned tool hints |
 
@@ -61,6 +63,7 @@ Tests/
 ├── InMemoryLearnerStore.cs
 ├── ManualTimeProvider.cs
 └── Unit/
+    ├── AppHostTests.cs
     ├── TutorMcpQueryServiceTests.cs
     ├── TutorMcpToolAnnotationTests.cs
     └── VocabularyScheduleTests.cs
