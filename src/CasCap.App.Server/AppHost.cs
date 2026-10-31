@@ -21,10 +21,10 @@ public static partial class AppHost
         {
             // Host builder
             var builder = WebApplication.CreateBuilder(args);
-            builder.Services.AddApplicationExitState();
 
             // Configuration
             var (appConfig, enabledFeatures, applicationMetadata) = builder.InitializeConfiguration(entryAssembly);
+            builder.Services.AddApplicationHostLifecycle(builder.Configuration);
 
             // Logging
             var logger = SerilogWebApplicationBuilderExtensions.InitializeSerilog(builder);

@@ -28,6 +28,7 @@ startup recipe.
 | Value | Default | Effect |
 | --- | --- | --- |
 | `tutorizr.replicaCount` | `0` | The umbrella schema permits only 0 or 1; one subscriber per group |
+| `tutorizr.terminationGracePeriodSeconds` | `45` | Exceeds the 30-second application shutdown budget |
 | `tutorizr.strategy` | RollingUpdate, `maxSurge: 0`, `maxUnavailable: 1` | Replaces the old pod before starting its replacement |
 | `tutorizr.image.repository` | `ghcr.io/f2calv/tutorizr` | Image reference; availability is not guaranteed by this default |
 | `tutorizr.image.tag` | empty | Supply the selected application release version explicitly |
