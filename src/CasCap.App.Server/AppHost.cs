@@ -21,6 +21,7 @@ public static partial class AppHost
         {
             // Host builder
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddApplicationExitState();
 
             // Configuration
             var (appConfig, enabledFeatures, applicationMetadata) = builder.InitializeConfiguration(entryAssembly);
@@ -57,6 +58,7 @@ public static partial class AppHost
 
             // Run
             await app.RunAsync();
+            return app.Services.GetApplicationExitCode();
         }
         catch (Exception exception) when (exception is not OperationCanceledException and not TaskCanceledException)
         {
@@ -69,6 +71,5 @@ public static partial class AppHost
             await Log.CloseAndFlushAsync();
         }
 
-        return 0;
     }
 }
