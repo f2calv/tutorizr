@@ -4,6 +4,7 @@
 
 tutorizr:
   replicaCount: 0
+  terminationGracePeriodSeconds: 45
   # Comms is the group's single gRPC subscriber, so old and new pods must never overlap.
   strategy:
     type: RollingUpdate

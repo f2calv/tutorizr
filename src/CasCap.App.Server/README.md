@@ -85,6 +85,7 @@ in place of `:`.
 | Section | Defining contract and host behavior |
 | --- | --- |
 | `AppConfig` | [`AppConfig`](Models/_AppConfig.cs): MCP path and telemetry; [`AzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/main/src/CasCap.Api.Azure.Auth/Models/_AzureAuthConfig.cs): Key Vault and host Azure credential |
+| `CasCap:HostLifecycleConfig` | `HostLifecycleConfig`: 30-second graceful shutdown budget |
 | `CasCap:FeatureConfig` | [`FeatureConfig`](Models/_FeatureConfig.cs): comma-separated, case-insensitive `Comms` and/or `Mcp`; empty or unknown selections fail |
 | `CasCap:TutorConfig` | [`TutorConfig`](Models/_TutorConfig.cs): target `B1`, four Redis keys, `MaxMistakes=500` (1–100,000); used by Mcp |
 | `CasCap:ApiAuthConfig` | [`ApiAuthConfig`](https://github.com/f2calv/CasCap.Common/blob/main/src/CasCap.Common.Abstractions/Models/_ApiAuthConfig.cs): MCP Basic credentials |
