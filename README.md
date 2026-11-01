@@ -52,19 +52,24 @@ An MCP client can then connect to `http://localhost:5080/mcp` with HTTP Basic au
 The [host README](src/CasCap.App.Server/README.md) gives the tool contract, configuration precedence
 and full chat prerequisites.
 
-## Service Architecture
+## System Context
+
+tutorizr is a tutor host that relays a Signal group's conversation to an Agent Runtime and gives
+that runtime tools to record the learner's progress. The
+[architecture drilldown](docs/architecture.md) opens this box into its containers and components.
 
 ```mermaid
 flowchart LR
-    Learner([Signal group]) <--> Gateway[Signal gateway]
-    Gateway -- gRPC inbound --> Comms[Comms feature]
-    Comms -- REST replies --> Gateway
-    Comms -- streamed agent run --> Runtime[External Agent Runtime]
-    Runtime -- authenticated tool calls --> Mcp[Mcp feature]
-    Mcp --> Store[(Redis learner state)]
-    Comms --> Queue[(Redis communications state)]
-    classDef external fill:#eee,stroke:#999,color:#222
-    class Learner,Gateway,Runtime external
+    classDef system fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
+    classDef person fill:#ede9fe,stroke:#6d28d9,color:#2e1065
+    classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
+
+    learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway]:::external
+    gateway -->|"gRPC deliveries"| tutorizr[tutorizr<br/>Signal-group tutor host]:::system
+    tutorizr -->|"REST replies"| gateway
+    tutorizr -->|"streamed agent runs"| runtime[Agent Runtime]:::external
+    runtime -->|"learner tools over MCP"| tutorizr
+    tutorizr -.->|"optional transcription and speech"| speech[Speech providers]:::external
 ```
 
 `Comms` and `Mcp` can run independently or together. Full chat requires a configured gateway group,
