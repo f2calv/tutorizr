@@ -8,6 +8,7 @@ public static partial class AppHost
 {
     private static void MapEndpoints(WebApplication app, AppConfig appConfig, HashSet<string> enabledFeatures)
     {
+        app.UseCasCapRequestLogging();
         app.UseAuthentication();
         app.UseAuthorization();
 
@@ -36,7 +37,5 @@ public static partial class AppHost
                 Predicate = healthCheck => healthCheck.Tags.Contains(tag)
             }).AllowAnonymous();
         }
-
-        app.UseCasCapRequestLogging();
     }
 }
