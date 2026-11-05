@@ -434,7 +434,7 @@ FodyWeavers.xsd
 # Custom local files
 *.tgz
 *.lock
-!charts/agentizr/Chart.lock
+!charts/tutorizr/Chart.lock
 manifest*
 appsettings.Local.json
 appsettings.Local.*.json
