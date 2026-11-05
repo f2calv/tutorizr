@@ -60,7 +60,7 @@ The store accepts cancellation tokens but its Redis calls do not pass them throu
 read-modify-write operations, not concurrent-update-safe transactions across the entire tool call;
 retrying a non-idempotent tool can record another review or mistake.
 
-When Comms is enabled, [`MessagingMcpQueryService`](https://github.com/f2calv/signalizr/blob/b5ae4f04ff8a6f9f9f611da60a08872a41e34176/src/CasCap.Comms.AI/Services/MessagingMcpQueryService.cs)
+When Comms is enabled, [`MessagingMcpQueryService`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/Services/MessagingMcpQueryService.cs)
 adds `create_poll`, `close_poll` and `get_poll_status`. Poll state is process-local and lost on restart.
 Tool annotations are metadata, not authorization: this host does not restrict write tools per client.
 The external runtime owns its tool allowlist and execution policy.
@@ -90,16 +90,16 @@ in place of `:`.
 | `CasCap:TutorConfig` | [`TutorConfig`](Models/_TutorConfig.cs): target `B1`, four Redis keys, `MaxMistakes=500` (1–100,000); used by Mcp |
 | `CasCap:ApiAuthConfig` | [`ApiAuthConfig`](https://github.com/f2calv/CasCap.Common/blob/main/src/CasCap.Common.Abstractions/Models/_ApiAuthConfig.cs): MCP Basic credentials |
 | `CasCap:CachingConfig` | Redis connection required even in MCP-only mode |
-| `CasCap:CommsConfig` | [`CommsConfig`](https://github.com/f2calv/signalizr/blob/b5ae4f04ff8a6f9f9f611da60a08872a41e34176/src/CasCap.Comms/Models/_CommsConfig.cs): groups, agent/session selection, communications stream and monitor behavior |
+| `CasCap:CommsConfig` | [`CommsConfig`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Models/_CommsConfig.cs): groups, agent/session selection, communications stream and monitor behavior |
 | `CasCap:SignalizrClientConfig` | [`SignalizrClientConfig`](https://github.com/f2calv/signalizr/blob/main/src/CasCap.Signalizr.Client/Models/_SignalizrClientConfig.cs): gateway REST/gRPC addresses and subscriber |
-| `CasCap:AgentRuntimeClientOptions` | [`AgentRuntimeClientOptions`](https://github.com/f2calv/agentizr/blob/13aa4a19180b9dbd0f14fa08fbf95f67039b69f0/src/CasCap.AgentRuntime.Client/Models/_AgentRuntimeClientOptions.cs): runtime address and request timeout |
-| `CasCap:AgentRuntimeAzureAuthConfig` | [`AgentRuntimeAzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/eaaffef87e366fa62ddc5328dd6f71add9b6397c/src/CasCap.Api.Azure.Auth/Models/_AgentRuntimeAzureAuthConfig.cs): optional Entra authentication for runtime calls |
+| `CasCap:AgentRuntimeClientOptions` | [`AgentRuntimeClientOptions`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Models/_AgentRuntimeClientOptions.cs): runtime address and request timeout |
+| `CasCap:AgentRuntimeAzureAuthConfig` | [`AgentRuntimeAzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/2.0.0/src/CasCap.Api.Azure.Auth/Models/_AgentRuntimeAzureAuthConfig.cs): optional Entra authentication for runtime calls |
 | `CasCap:SpeechToTextConfig`, `CasCap:TextToSpeechConfig` | [`SpeechToTextConfig`](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/Models/_SpeechToTextConfig.cs), [`TextToSpeechConfig`](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/Models/_TextToSpeechConfig.cs): disabled by default |
 
 Do not reuse learner Redis keys across independent deployments. See the
-[Comms guide](https://github.com/f2calv/signalizr/blob/b5ae4f04ff8a6f9f9f611da60a08872a41e34176/src/CasCap.Comms/README.md)
+[Comms guide](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/README.md)
 for group matching, duplicate suppression and queue behavior, the
-[AI responder guide](https://github.com/f2calv/signalizr/blob/b5ae4f04ff8a6f9f9f611da60a08872a41e34176/src/CasCap.Comms.AI/README.md)
+[AI responder guide](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md)
 for chat commands/session behavior, and the
 [voice guide](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/README.md)
 for backend requirements and limits.
@@ -148,6 +148,21 @@ revisions. The Debug solution includes those sources.
 Release references pin the published shared hosting, caching, configuration, Azure authentication
 and Comms AI packages, so the Release build and the root Dockerfile need no adjacent checkouts.
 
-The direct MCP package is `ModelContextProtocol.AspNetCore` `2.3.0`; other package versions are
+The direct MCP package is `ModelContextProtocol.AspNetCore` `2.3.1`; other package versions are
 centralized in [Directory.Packages.props](../../Directory.Packages.props). See the
 [test project](../CasCap.App.Server.Tests/README.md) for offline checks and their limits.
+
+### Dependency Graph
+
+These are the host's direct Release dependencies. Debug substitutes adjacent source projects for
+the internal packages; the MCP SDK remains a package in both configurations.
+
+```mermaid
+graph LR
+    Host[CasCap.App.Server, net10.0] --> Azure[CasCap.Api.Azure.Auth 2.0.0]
+    Host --> Comms[CasCap.Comms.AI 1.2.0]
+    Host --> Cache[CasCap.Common.Caching 5.1.0]
+    Host --> Config[CasCap.Common.Configuration 5.1.0]
+    Host --> Hosting[CasCap.Common.Hosting.AspNetCore 5.1.0]
+    Host --> MCP[ModelContextProtocol.AspNetCore 2.3.1]
+```

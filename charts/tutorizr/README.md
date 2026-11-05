@@ -72,17 +72,17 @@ The full values contract belongs to
 the umbrella
 [schema](https://github.com/f2calv/tutorizr/blob/main/charts/tutorizr/values.schema.json)
 and the dependency's
-[values reference](https://github.com/f2calv/helm-charts/blob/workload/1.6.0/charts/workload/README.md).
+[values reference](https://github.com/f2calv/helm-charts/blob/workload/1.7.0/charts/workload/README.md).
 
 ## Dependency Graph
 
 ```mermaid
 graph TD
-    Tutor([tutorizr application chart]) --> Workload[workload 1.6.0, alias tutorizr]
+    Tutor([tutorizr application chart]) --> Workload[workload 1.7.0, alias tutorizr]
 ```
 
-The dependency is pinned to `workload` `1.6.0` from `oci://ghcr.io/f2calv/charts` in
+The dependency is pinned to `workload` `1.7.0` from `oci://ghcr.io/f2calv/charts` in
 [`Chart.yaml`](https://github.com/f2calv/tutorizr/blob/main/charts/tutorizr/Chart.yaml).
-There is no tracked `Chart.lock` in this checkout. The chart owns no templates of its own and bundles
+The generated `Chart.lock` records that exact dependency. The chart owns no templates of its own and bundles
 neither Redis, the Signal gateway nor the Agent Runtime. Its `.helmignore` excludes `ci/`,
 `.git/`, `.github/` and `.copilot-tracking/` from packaging.

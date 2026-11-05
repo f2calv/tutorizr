@@ -13,7 +13,7 @@ CEFR word-list retrieval or exam-content collection.
 | Unit | Purpose | Availability |
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
-| [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 14 methods, 21 source-declared cases |
+| [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 15 methods, 22 source-declared cases |
 | [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
 ## Run the Learner Tools Locally
@@ -56,7 +56,8 @@ and full chat prerequisites.
 
 tutorizr is a tutor host that relays a Signal group's conversation to an Agent Runtime and gives
 that runtime tools to record the learner's progress. The
-[architecture drilldown](docs/architecture.md) opens this box into its containers and components.
+[architecture drilldown](docs/architecture.md) opens this box into its containers and components
+and describes the artifact publication flow.
 
 ```mermaid
 flowchart LR

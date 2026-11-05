@@ -128,3 +128,27 @@ stateDiagram-v2
     Box5 --> Box1: incorrect, due in 10 minutes
     Box1 --> Box1: incorrect, due in 10 minutes
 ```
+
+## Publication Flow
+
+The [CI workflow](../.github/workflows/ci.yml) validates pull requests without publishing images
+or charts. On the default branch it publishes both artifacts before creating the immutable release.
+Publication does not install the chart or deploy the host.
+
+```mermaid
+flowchart TD
+    Source[Pull request or default-branch source] --> Version[Resolve release version]
+    Source --> Lint[Repository lint]
+    Source --> Helm[Chart lint and schema checks]
+    Version --> Build[Release build and offline tests]
+    Build --> Image[Build image on every supported architecture]
+    Version --> Image
+    Image --> Chart[Package and validate umbrella chart]
+    Version --> Chart
+    Chart --> Mode{Default branch?}
+    Mode -->|No| Validation[Pull-request validation only]
+    Mode -->|Yes| Published[Image and OCI chart published]
+    Lint --> Release[Create missing immutable release tag]
+    Helm --> Release
+    Published --> Release
+```
