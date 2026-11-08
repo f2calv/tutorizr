@@ -28,6 +28,7 @@ jobs:
       tag-prefix: ''
       tag-and-release: false
 
+  # TODO: verify released shared-workflow SDK 11 support after GA before merging this platform upgrade.
   build:
     needs: [versioning]
     permissions:

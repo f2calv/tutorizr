@@ -1,6 +1,6 @@
 # CasCap.App.Server
 
-The .NET 10 ASP.NET Core host for tutorizr. It runs Signal communications, learner-progress MCP
+The .NET 11 ASP.NET Core host for tutorizr. It runs Signal communications, learner-progress MCP
 tools, or both, against external Redis and Agent Runtime services.
 
 ## Start Here
@@ -140,7 +140,7 @@ identity, a deployed agent definition or speech backends:
 
 ## Development
 
-This executable targets `net10.0` and is not a NuGet package. Debug/non-Release references use
+This executable targets `net11.0` and is not a NuGet package. Debug/non-Release references use
 adjacent `CasCap.Common`, `CasCap.Api.Azure` and `signalizr` projects; their dependency graph also
 requires adjacent `CasCap.Api.Voice` and `agentizr` checkouts. Keep those repositories at compatible
 revisions. The Debug solution includes those sources.
@@ -159,7 +159,7 @@ the internal packages; the MCP SDK remains a package in both configurations.
 
 ```mermaid
 graph LR
-    Host[CasCap.App.Server, net10.0] --> Azure[CasCap.Api.Azure.Auth 2.0.0]
+    Host[CasCap.App.Server, net11.0] --> Azure[CasCap.Api.Azure.Auth 2.0.0]
     Host --> Comms[CasCap.Comms.AI 1.2.0]
     Host --> Cache[CasCap.Common.Caching 5.1.0]
     Host --> Config[CasCap.Common.Configuration 5.1.0]

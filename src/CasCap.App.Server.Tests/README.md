@@ -1,6 +1,6 @@
 # CasCap.App.Server.Tests
 
-Credential-free .NET 10 unit tests for the tutorizr host, using xUnit v3 on
+Credential-free .NET 11 unit tests for the tutorizr host, using xUnit v3 on
 Microsoft.Testing.Platform. They exercise learner tools against an in-memory store, not a running
 web host, Redis instance, Signal gateway or Agent Runtime.
 
@@ -31,7 +31,7 @@ None: no skip attributes, conditional skip branches or credential gates are decl
 
 ## Running
 
-Use the .NET 10 SDK. Debug builds use the adjacent-source setup in the
+Use the .NET 11 RC3 SDK pinned in `global.json`. Debug builds use the adjacent-source setup in the
 [host development guide](../CasCap.App.Server/README.md#development). The project reference compiles
 the host even though these tests do not start it. From the repository root, when explicitly choosing
 to run tests:
