@@ -7,5 +7,7 @@
   <Folder Name="/tutorizr/">
     <Project Path="src/CasCap.App.Server/CasCap.App.Server.csproj" />
     <Project Path="src/CasCap.App.Server.Tests/CasCap.App.Server.Tests.csproj" />
+    <Project Path="src/CasCap.App.Realtime/CasCap.App.Realtime.csproj" />
+    <Project Path="src/CasCap.App.Maui/CasCap.App.Maui.csproj" />
   </Folder>
 </Solution>
