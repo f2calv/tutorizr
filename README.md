@@ -18,7 +18,7 @@ CEFR word-list retrieval or exam-content collection.
 
 ## Run the Learner Tools Locally
 
-Use the .NET 11 RC3 SDK pinned in `global.json` and the [local Compose dependency](docker-compose.yml), or an existing dedicated
+Use the .NET 11 SDK pinned in `global.json` and the [local Compose dependency](docker-compose.yml), or an existing dedicated
 development Redis instance. Release builds resolve every dependency from
 NuGet; Debug builds instead use adjacent source checkouts, as described in the
 [host development guide](src/CasCap.App.Server/README.md#development).
