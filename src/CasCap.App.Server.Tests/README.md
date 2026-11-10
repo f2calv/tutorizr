@@ -2,7 +2,7 @@
 
 Credential-free .NET 10 unit tests for the tutorizr host, using xUnit v3 on
 Microsoft.Testing.Platform. They exercise learner tools against an in-memory store, not a running
-web host, Redis instance, Signal gateway or Agent Runtime.
+web host, Redis instance, Signal gateway or Agentizr runtime.
 
 ## Tests
 

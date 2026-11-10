@@ -1,14 +1,14 @@
 namespace CasCap.Models;
 
-/// <summary>A German word or phrase the learner is practising.</summary>
+/// <summary>A word, phrase or other item the learner is practising with spaced repetition.</summary>
 public sealed record VocabularyItem
 {
-    /// <summary>German word or phrase, with its article for nouns, e.g. <c>der Bahnhof</c>.</summary>
-    [Description("German word or phrase, with its article for nouns.")]
+    /// <summary>The item as taught, including any article or grammatical marker, e.g. <c>der Bahnhof</c> in German.</summary>
+    [Description("Word or phrase in the language being learned, including any article or grammatical marker.")]
     public required string Term { get; init; }
 
-    /// <summary>English meaning.</summary>
-    [Description("English meaning.")]
+    /// <summary>Meaning in the learner's own language.</summary>
+    [Description("Meaning in the learner's own language.")]
     public required string Meaning { get; init; }
 
     /// <summary>Level the term belongs to.</summary>

@@ -25,8 +25,9 @@ public sealed record RealtimeConfig
 
     /// <summary>Session instructions sent to the model.</summary>
     /// <remarks>
-    /// TODO: load the tutor definition's instructions from the Agent Runtime instead of local configuration, so the
-    /// teaching prompt has one owner; kept local while the transport is proven.
+    /// Defaults to the German example tutor. TODO: load the tutor definition's instructions from the Agent
+    /// Runtime instead of local configuration, so the teaching prompt has one owner; kept local while the
+    /// transport is proven.
     /// </remarks>
     [Required, MinLength(1)]
     public string Instructions { get; set; } =
@@ -44,6 +45,6 @@ public sealed record RealtimeConfig
     /// <summary>Learner transcription model, or empty to disable learner transcripts.</summary>
     public string? InputTranscriptionModel { get; set; } = "whisper-1";
 
-    /// <summary>Language hint for learner transcription, or empty to auto-detect.</summary>
+    /// <summary>Language hint for learner transcription, or empty to auto-detect; defaults to the German example.</summary>
     public string? InputTranscriptionLanguage { get; set; } = "de";
 }

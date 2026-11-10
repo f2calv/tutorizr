@@ -4,7 +4,7 @@
              x:Class="CasCap.Pages.ConversationPage"
              Title="Tutor">
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="24" RowSpacing="16">
-        <Label Text="Live German tutor" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Text="Live tutor" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
         <Label Grid.Row="1" Style="{StaticResource IntroLabelStyle}"
                Text="Your voice is streamed to Azure OpenAI while a session is active. Audio and transcripts are not stored." />
         <VerticalStackLayout Grid.Row="2" Spacing="4">

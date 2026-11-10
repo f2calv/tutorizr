@@ -1,14 +1,17 @@
 # Architecture
 
 This drilldown opens the tutorizr host from the [System Context](../README.md#system-context) into its
-containers and components, then follows one learner turn and the vocabulary review lifecycle.
-Teaching behaviour lives in the externally supplied Agent Runtime definition, not in this host.
+containers and components, then follows one learner turn and the spaced-repetition lifecycle.
+Teaching behaviour, persona and subject live in the tutor's agent definition in the
+[Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.4.0/docs/architecture.md), not in
+this host, so the same containers serve any subject; the German tutor is only the first example.
 
 ## Containers
 
 One image provides the host. `CasCap:FeatureConfig:EnabledFeatures` selects the `Comms` role, the
 `Mcp` role or both; the [chart](../charts/tutorizr/README.md) runs a single replica so only one Comms
 subscriber exists. Redis holds the learner state and the communications pipeline's delivery state.
+The live voice client is a separate Windows application and is not deployed by the chart.
 
 ```mermaid
 flowchart LR
@@ -18,23 +21,32 @@ flowchart LR
     classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
 
     learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway<br/>signalizr]:::external
+    voiceLearner([Learner on Windows]):::person <-->|speech| client
     subgraph tutorizr [tutorizr]
         host[Tutor host<br/>ASP.NET Core; Comms and Mcp roles]:::container
         redis[(Redis<br/>learner state, delivery deduplication)]:::store
+        client[Live voice client<br/>.NET MAUI on Windows, proof of concept]:::container
         host -->|hashes and sorted sets| redis
     end
     gateway -->|"gRPC deliveries"| host
     host -->|"REST replies"| gateway
-    host -->|"streamed agent runs"| runtime[Agent Runtime]:::external
+    host -->|"streamed agent runs"| runtime[Agentizr agent runtime]:::external
     runtime -->|"MCP tool calls, Basic auth"| host
     host -.->|"optional transcription and speech"| speech[Speech providers]:::external
+    client <-->|"realtime audio over WebSocket"| realtime[Azure OpenAI realtime model]:::external
 ```
+
+The client currently authenticates to Azure OpenAI with the signed-in user's Microsoft Entra
+identity and a local prompt. In the target design, proposed in
+[agentizr#29](https://github.com/f2calv/agentizr/pull/29), the client posts a WebRTC offer to
+Agentizr, which applies the tutor definition and executes learner tools on the client's behalf.
 
 ## Host Components
 
 The host owns the learner tools and their store. The communications pipeline and poll tools come
-from the `CasCap.Comms.AI` package published by signalizr; this repository only registers them.
-`AppHost` is the composition root that wires the components below by feature.
+from the [`CasCap.Comms.AI` package](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md)
+published by signalizr; this repository only registers them. `AppHost` is the composition root that
+wires the components below by feature.
 
 ```mermaid
 flowchart TB
@@ -59,7 +71,7 @@ flowchart TB
     comms -->|deduplication| redis
     comms <-->|"gRPC and REST"| gateway[Signal gateway]:::external
     polls -->|"REST polls"| gateway
-    comms -->|"streamed runs"| runtime[Agent Runtime]:::external
+    comms -->|"streamed runs"| runtime[Agentizr agent runtime]:::external
     runtime -->|"tool calls"| mcp
 ```
 
@@ -74,14 +86,16 @@ package.
 | Learner tools | Validates and bounds tool input, returns structured learner results | `Services/TutorMcpQueryService.cs`, `Models/` | Seven `[McpServerTool]` methods | `ILearnerStore`, Vocabulary schedule, `TimeProvider` |
 | Vocabulary schedule | Normalizes terms and computes Leitner review transitions | `Services/VocabularySchedule.cs` | `CreateNew`, `Review`, `Normalise` | None |
 | Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
-| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | `ICommsResponder` | Signal gateway, Agent Runtime, Redis |
+| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
+| Realtime conversation | Streams microphone audio, plays replies as they arrive and truncates interrupted replies to what was heard | `src/CasCap.App.Realtime/Services/RealtimeConversation.cs` | `RealtimeConversation` | `IRealtimeAudioInput`, `IRealtimeAudioOutput`, `TokenCredential` |
+| Windows audio | WASAPI capture in communications mode for echo cancellation, and streamed playback | `src/CasCap.App.Maui/Platforms/Windows/Services/` | `IRealtimeAudioInput`, `IRealtimeAudioOutput` | NAudio |
 
 ## Runtime Scenarios
 
 ### Learner Turn with a Tool Call
 
-The Agent Runtime decides which learner tools to call; the host only persists and returns data.
+The tutor agent decides which learner tools to call; the host only persists and returns data.
 
 ```mermaid
 sequenceDiagram
@@ -89,7 +103,7 @@ sequenceDiagram
     actor learner as Learner
     participant gateway as Signal gateway
     participant comms as Comms pipeline
-    participant runtime as Agent Runtime
+    participant runtime as Agentizr agent runtime
     participant tools as Learner tools
     participant store as Learner store
 
@@ -109,10 +123,10 @@ sequenceDiagram
     gateway->>learner: reply in the group
 ```
 
-## Vocabulary Lifecycle
+## Spaced-Repetition Lifecycle
 
-A term moves through five Leitner boxes. The interval waited after a correct answer depends on the
-box the term reaches.
+A term, word, fact or other recall item moves through five Leitner boxes. The interval waited after
+a correct answer depends on the box the term reaches.
 
 ```mermaid
 stateDiagram-v2
