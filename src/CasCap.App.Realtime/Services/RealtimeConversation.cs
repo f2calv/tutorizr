@@ -320,14 +320,15 @@ public sealed class RealtimeConversation(
             }
         }
         await _sessionCts!.CancelAsync();
-        _sessionReady?.TrySetCanceled();
+        _sessionReady?.TrySetCanceled(_sessionCts.Token);
         try
         {
-            await Task.WhenAll(_receiveTask ?? Task.CompletedTask, _captureTask ?? Task.CompletedTask).WaitAsync(StopTimeout);
+            await Task.WhenAll(_receiveTask ?? Task.CompletedTask, _captureTask ?? Task.CompletedTask)
+                .WaitAsync(StopTimeout, CancellationToken.None);
         }
-        catch (TimeoutException)
+        catch (TimeoutException ex)
         {
-            logger.LogWarning("Realtime conversation loops did not stop within {StopTimeout}", StopTimeout);
+            logger.LogWarning(ex, "Realtime conversation loops did not stop within {StopTimeout}", StopTimeout);
         }
 
         output.Stop();
