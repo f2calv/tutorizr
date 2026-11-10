@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Temporary scaffold palette; replace during product branding. -->
+    <Color x:Key="Primary">#512BD4</Color>
+    <Color x:Key="PrimaryDark">#D0BCFF</Color>
+    <Color x:Key="SurfaceLight">#FFFBFE</Color>
+    <Color x:Key="SurfaceDark">#1C1B1F</Color>
+    <Color x:Key="TextLight">#1C1B1F</Color>
+    <Color x:Key="TextDark">#F4EFF4</Color>
+    <Color x:Key="SecondaryTextLight">#49454F</Color>
+    <Color x:Key="SecondaryTextDark">#CAC4D0</Color>
+</ResourceDictionary>
