@@ -129,11 +129,16 @@ public sealed partial class ConversationPage : ContentPage
         await EndCallAsync();
     }
 
+    // Android raises web view messages on a background thread; the page may only be updated from the main thread.
     private void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
     {
-        if (e.Message is null)
-            return;
-        using var message = JsonDocument.Parse(e.Message);
+        if (e.Message is { } message)
+            Dispatcher.Dispatch(() => HandleCallViewMessage(message));
+    }
+
+    private void HandleCallViewMessage(string json)
+    {
+        using var message = JsonDocument.Parse(json);
         var root = message.RootElement;
         switch (root.GetProperty("type").GetString())
         {
