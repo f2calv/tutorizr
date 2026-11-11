@@ -98,6 +98,7 @@ flowchart LR
     runtime -->|"learner tools over MCP"| tutorizr
     tutorizr -.->|"optional transcription and speech"| speech[Speech providers]:::external
     client[tutorizr live voice client<br/>proof of concept]:::system <-->|"realtime audio"| realtime[Azure OpenAI realtime model]:::external
+    client -->|"call setup and hang-up"| runtime
 ```
 
 `Comms` and `Mcp` can run independently or together. Full chat requires a configured gateway group,
@@ -105,9 +106,8 @@ runtime agent definition/session and runtime authentication where enforced. Run 
 subscriber for the group, with non-overlapping rollouts. When both features are enabled, the host
 also exposes the shared poll tools; MCP-only mode exposes just the seven learner tools.
 
-The live voice client currently uses a local prompt and no learner tools. Once Agentizr brokers
-realtime calls, the client sends only its WebRTC offer to the runtime, which applies the same tutor
-definition and calls the same learner tools as the chat path.
+The live voice client sends only its WebRTC offer to Agentizr's brokered realtime calls; the runtime
+applies the same tutor definition and calls the same learner tools as the chat path.
 
 ## Subjects and the Example Tutor
 
