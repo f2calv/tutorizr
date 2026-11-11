@@ -45,7 +45,7 @@ public sealed partial class SettingsPage : ContentPage
         BaseAddressEntry.Text = _preferences.Get(BaseAddressKey, string.Empty);
     }
 
-    private void OnSaveClicked(object? sender, EventArgs e)
+    private async void OnSaveClicked(object? sender, EventArgs e)
     {
         var values = new Dictionary<string, string>
         {
@@ -67,6 +67,7 @@ public sealed partial class SettingsPage : ContentPage
         if (errors.Count > 0)
         {
             ShowStatus(string.Join(" ", errors));
+            await DisplayAlertAsync("Settings not saved", string.Join(Environment.NewLine, errors), "OK");
             return;
         }
 
@@ -74,7 +75,9 @@ public sealed partial class SettingsPage : ContentPage
             _preferences.Set(key, value);
         _settings.Reload();
         // Sign-in and the runtime client read their settings once, when the first call starts.
-        ShowStatus("Saved. If you already started a call, close and reopen the app to use the new settings.");
+        const string saved = "If you already started a call, close and reopen the app to use the new settings.";
+        ShowStatus($"Saved. {saved}");
+        await DisplayAlertAsync("Settings saved", saved, "OK");
     }
 
     private void ShowStatus(string text)

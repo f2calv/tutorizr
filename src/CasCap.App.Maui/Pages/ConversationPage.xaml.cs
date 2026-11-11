@@ -80,8 +80,10 @@ public sealed partial class ConversationPage : ContentPage
             }
             SetState(TutorCallState.Listening);
         }
-        catch (OptionsValidationException)
+        catch (OptionsValidationException ex)
         {
+            _logger.LogWarning(ex, "{ClassName} tutor settings failed validation for {OptionsName}",
+                nameof(ConversationPage), ex.OptionsType.Name);
             await FailAsync("Tutor settings are incomplete. Enter them on the Settings tab, or in user secrets on Windows.");
         }
         catch (MsalException ex)
