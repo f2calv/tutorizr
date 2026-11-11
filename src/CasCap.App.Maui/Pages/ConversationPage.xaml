@@ -9,6 +9,10 @@
                Text="While a call is active your voice is streamed to Azure OpenAI through a call brokered by the Agentizr runtime. This app does not store audio or transcripts." />
         <VerticalStackLayout Grid.Row="2" Spacing="4">
             <Label x:Name="StateLabel" Style="{StaticResource SectionTitleLabelStyle}" />
+            <HorizontalStackLayout x:Name="MicrophoneIndicator" Spacing="8" IsVisible="False">
+                <Ellipse x:Name="MicrophoneDot" WidthRequest="14" HeightRequest="14" Fill="Gray" VerticalOptions="Center" />
+                <Label x:Name="MicrophoneLabel" VerticalOptions="Center" />
+            </HorizontalStackLayout>
             <Label x:Name="DetailLabel" Style="{StaticResource IntroLabelStyle}" />
         </VerticalStackLayout>
         <HorizontalStackLayout Grid.Row="3" Spacing="12">

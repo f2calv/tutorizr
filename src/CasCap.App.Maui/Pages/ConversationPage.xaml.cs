@@ -1,5 +1,7 @@
 using CasCap.AgentRuntime.Contracts.V1;
 using Microsoft.Identity.Client;
+using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Maui.Graphics;
 using System.Net;
 using System.Text.Json;
 
@@ -16,6 +18,7 @@ public sealed partial class ConversationPage : ContentPage
     private static readonly TimeSpan MediaTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan HangUpTimeout = TimeSpan.FromSeconds(5);
     private const int MaxTranscriptLines = 40;
+    private const string MicrophonePulse = nameof(MicrophonePulse);
     private const string MediaFailureMessage =
         "Could not open the microphone or start call audio. Check the app's microphone permission.";
 
@@ -24,6 +27,7 @@ public sealed partial class ConversationPage : ContentPage
     private readonly Queue<string> _transcript = new();
     private TutorCallState _state = TutorCallState.Disconnected;
     private bool _muted;
+    private bool _hearing;
 
     /// <summary>Initializes a new instance of the <see cref="ConversationPage"/> class.</summary>
     /// <param name="callService">Starts and ends calls through the Agent Runtime.</param>
@@ -137,6 +141,9 @@ public sealed partial class ConversationPage : ContentPage
                 AddTranscript(root.GetProperty("speaker").GetString() == "tutor" ? "Tutor" : "You",
                     root.GetProperty("text").GetString() ?? string.Empty);
                 break;
+            case "microphone":
+                SetHearing(root.GetProperty("hearing").GetBoolean());
+                break;
             case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking:
                 var value = root.GetProperty("value").GetString();
                 if (value == "failed")
@@ -213,6 +220,20 @@ public sealed partial class ConversationPage : ContentPage
     private void SetState(TutorCallState state)
     {
         _state = state;
+        if (state is not (TutorCallState.Listening or TutorCallState.Speaking))
+            SetHearing(false);
+        Render();
+    }
+
+    private void SetHearing(bool hearing)
+    {
+        _hearing = hearing;
+        this.AbortAnimation(MicrophonePulse);
+        MicrophoneDot.Scale = 1;
+        MicrophoneDot.Fill = new SolidColorBrush(hearing ? Colors.LimeGreen : Colors.Gray);
+        if (hearing)
+            new Animation(scale => MicrophoneDot.Scale = scale, 1, 1.5, Easing.SinInOut)
+                .Commit(this, MicrophonePulse, length: 500, finished: (_, _) => MicrophoneDot.Scale = 1, repeat: () => _hearing);
         Render();
     }
 
@@ -224,5 +245,8 @@ public sealed partial class ConversationPage : ContentPage
         MuteButton.IsEnabled = active;
         MuteButton.Text = _muted ? "Unmute" : "Mute";
         EndButton.IsEnabled = active || _state == TutorCallState.Connecting;
+        MicrophoneIndicator.IsVisible = active;
+        MicrophoneLabel.Text = _muted ? "Microphone muted" : _hearing ? "Hearing you" : "Microphone on, quiet";
+        SemanticProperties.SetDescription(MicrophoneIndicator, MicrophoneLabel.Text);
     }
 }

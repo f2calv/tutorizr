@@ -10,9 +10,38 @@
         // Agent Runtime; this page never sees tokens, instructions or tool calls.
         let peer = null;
         let microphone = null;
+        let meter = null;
 
         function notify(message) {
             window.HybridWebView.SendRawMessage(JSON.stringify(message));
+        }
+
+        // Reports when the microphone hears sound, so the app can show the learner that audio is reaching the call.
+        function startMeter(stream) {
+            const context = new AudioContext();
+            const analyser = context.createAnalyser();
+            analyser.fftSize = 512;
+            context.createMediaStreamSource(stream).connect(analyser);
+            const samples = new Float32Array(analyser.fftSize);
+            let hearing = false;
+            let quietSince = 0;
+            const timer = setInterval(() => {
+                analyser.getFloatTimeDomainData(samples);
+                const level = Math.sqrt(samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length);
+                const muted = !stream.getAudioTracks().some(track => track.enabled);
+                const now = Date.now();
+                if (!muted && level > 0.02) {
+                    quietSince = now;
+                    if (!hearing) {
+                        hearing = true;
+                        notify({ type: 'microphone', hearing: true });
+                    }
+                } else if (hearing && now - quietSince > 300) {
+                    hearing = false;
+                    notify({ type: 'microphone', hearing: false });
+                }
+            }, 100);
+            return { stop: () => { clearInterval(timer); context.close(); } };
         }
 
         function onProviderEvent(event) {
@@ -48,6 +77,7 @@
                         notify({ type: 'state', value: 'failed' });
                 };
                 microphone.getTracks().forEach(track => peer.addTrack(track, microphone));
+                meter = startMeter(microphone);
                 peer.createDataChannel('oai-events').onmessage = message => onProviderEvent(JSON.parse(message.data));
                 await peer.setLocalDescription(await peer.createOffer());
                 return peer.localDescription.sdp;
@@ -74,8 +104,10 @@
         }
 
         function hangUp() {
+            meter?.stop();
             peer?.close();
             microphone?.getTracks().forEach(track => track.stop());
+            meter = null;
             peer = null;
             microphone = null;
             return true;
