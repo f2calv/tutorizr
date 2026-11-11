@@ -64,6 +64,18 @@ An MCP client can then connect to `http://localhost:5080/mcp` with HTTP Basic au
 The [host README](src/CasCap.App.Server/README.md) gives the tool contract, configuration precedence
 and full chat prerequisites.
 
+## Run the Voice Client
+
+The voice client needs a runtime that brokers realtime calls and a public client registration, as
+described in the [authentication guide](docs/authentication.md#voice-client-sign-in). Until Agentizr
+publishes a client package with realtime calls, the app builds only in Debug against an adjacent
+Agentizr checkout.
+
+- **Windows:** set the settings in user secrets, then start the `Windows Machine` profile.
+- **Android:** deploy a Debug build to an emulator or phone, or build a sideload APK with
+  `./build-apk.ps1 -Install` once Release builds restore. Enter the settings on the app's
+  **Settings** tab.
+
 ## System Context
 
 tutorizr gives an Agentizr tutor agent its channels and its learner-progress tools. The
