@@ -11,8 +11,10 @@ public sealed partial class AppShell : Shell
         ArgumentNullException.ThrowIfNull(page);
 
         InitializeComponent();
-        Items.Add(new ShellContent { Content = page, Route = "conversation", Title = "Tutor" });
+        var tabs = new TabBar();
+        tabs.Items.Add(new ShellContent { Content = page, Route = "conversation", Title = "Tutor" });
         if (settingsPage is not null)
-            Items.Add(new ShellContent { Content = settingsPage, Route = "settings", Title = "Settings" });
+            tabs.Items.Add(new ShellContent { Content = settingsPage, Route = "settings", Title = "Settings" });
+        Items.Add(tabs);
     }
 }

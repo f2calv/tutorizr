@@ -1,3 +1,5 @@
+using CasCap.AgentRuntime.Client.Abstractions;
+
 namespace CasCap;
 
 /// <summary>Configures and creates the MAUI application host.</summary>
@@ -17,6 +19,7 @@ public static partial class MauiProgram
         builder.Services.AddSingleton<MsalAccessTokenProvider>();
         builder.Services.AddTransient<BearerTokenHandler>();
         builder.Services.AddAgentRuntimeClient().AddHttpMessageHandler<BearerTokenHandler>();
+        builder.Services.AddTransient<Func<IAgentRuntimeClient>>(services => services.GetRequiredService<IAgentRuntimeClient>);
         builder.Services.AddTransient<TutorCallService>();
         builder.Services.AddTransient<ConversationPage>();
 

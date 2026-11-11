@@ -7,11 +7,14 @@ namespace CasCap.Services;
 /// Starts and ends the learner's brokered voice call through the Agent Runtime. The runtime applies the tutor's
 /// instructions and runs its tools; this client only exchanges the WebRTC offer and answer.
 /// </summary>
-/// <param name="client">The Agent Runtime client authenticated as the learner.</param>
+/// <param name="clientFactory">
+/// Creates the Agent Runtime client authenticated as the learner; deferred because creating it validates settings that a
+/// first run on a device has not entered yet.
+/// </param>
 /// <param name="config">The validated tutor client settings.</param>
 /// <param name="logger">The service logger.</param>
 public sealed class TutorCallService(
-    IAgentRuntimeClient client,
+    Func<IAgentRuntimeClient> clientFactory,
     IOptions<TutorClientConfig> config,
     ILogger<TutorCallService> logger)
 {
@@ -25,7 +28,7 @@ public sealed class TutorCallService(
     /// <param name="cancellationToken">Cancels call setup.</param>
     public async Task<string?> StartAsync(string sdpOffer, CancellationToken cancellationToken)
     {
-        var response = await client.CreateRealtimeCallAsync(config.Value.AgentName!, sdpOffer, cancellationToken);
+        var response = await clientFactory().CreateRealtimeCallAsync(config.Value.AgentName!, sdpOffer, cancellationToken);
         _callId = response?.CallId;
         return response?.SdpAnswer;
     }
@@ -41,7 +44,7 @@ public sealed class TutorCallService(
             return null;
         try
         {
-            return await client.EndRealtimeCallAsync(config.Value.AgentName!, callId, cancellationToken);
+            return await clientFactory().EndRealtimeCallAsync(config.Value.AgentName!, callId, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
