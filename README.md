@@ -10,7 +10,7 @@ a learner reaches the tutor through and the learner-progress tools the tutor cal
   voice notes, to the runtime through the [Comms pipeline](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md).
 - **Learner progress:** the same host exposes learner-progress tools over Model Context Protocol (MCP),
   backed by Redis, which the runtime calls during a lesson.
-- **Live voice:** a Windows .NET MAUI client holds continuous, interruptible voice calls through Agentizr's
+- **Live voice:** a .NET MAUI client for Android and Windows holds continuous, interruptible voice calls through Agentizr's
   brokered realtime calls ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)): the runtime applies
   the tutor definition and runs its tools, while audio flows over WebRTC between the client and Azure OpenAI.
 
@@ -25,7 +25,7 @@ repository ships no tutor definition, model, word lists or exam material.
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
 | [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 15 methods, 22 source-declared cases |
-| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | Windows .NET MAUI app with Start, Mute and End controls; WebRTC in a hosted web view, learner sign-in with MSAL | Debug solution only; proof of concept |
+| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI app for Android, with a Windows development target; Start, Mute and End controls, WebRTC in a hosted web view, learner sign-in with MSAL | Debug solution only; proof of concept |
 | [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
 ## Run the Learner Tools Locally
@@ -79,7 +79,7 @@ flowchart LR
     classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
 
     learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway]:::external
-    voiceLearner([Learner on Windows]):::person <-->|speech| client
+    voiceLearner([Learner on a phone or PC]):::person <-->|speech| client
     gateway -->|"gRPC deliveries"| tutorizr[tutorizr<br/>tutor host]:::system
     tutorizr -->|"REST replies"| gateway
     tutorizr -->|"streamed agent runs"| runtime[Agentizr agent runtime<br/>tutor definition, sessions]:::external

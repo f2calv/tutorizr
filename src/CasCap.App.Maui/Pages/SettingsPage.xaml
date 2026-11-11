@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CasCap.Pages.SettingsPage"
+             Title="Settings">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+            <Label Text="Tutor settings" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Style="{StaticResource IntroLabelStyle}"
+                   Text="The tutor signs you in with your Microsoft account and calls your Agentizr runtime. These values are not secrets and stay on this device." />
+
+            <Label Text="Directory (tenant) ID" />
+            <Entry x:Name="TenantIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
+                   SemanticProperties.Description="Directory (tenant) ID" />
+            <Label Text="Application (client) ID" />
+            <Entry x:Name="ClientIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
+                   SemanticProperties.Description="Application (client) ID" />
+            <Label Text="Runtime API scope" />
+            <Entry x:Name="ApiScopeEntry" Placeholder="api://00000000-0000-0000-0000-000000000000/agent.realtime"
+                   Keyboard="Url" SemanticProperties.Description="Runtime API scope" />
+            <Label Text="Tutor agent name" />
+            <Entry x:Name="AgentNameEntry" SemanticProperties.Description="Tutor agent name" />
+            <Label Text="Runtime address" />
+            <Entry x:Name="BaseAddressEntry" Placeholder="https://runtime.example.com/"
+                   Keyboard="Url" SemanticProperties.Description="Runtime address" />
+
+            <Button Text="Save" Clicked="OnSaveClicked" HorizontalOptions="Start"
+                    SemanticProperties.Hint="Saves the tutor settings on this device" />
+            <Label x:Name="StatusLabel" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

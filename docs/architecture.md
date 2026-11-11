@@ -11,7 +11,7 @@ this host, so the same containers serve any subject; the German tutor is only th
 One image provides the host. `CasCap:FeatureConfig:EnabledFeatures` selects the `Comms` role, the
 `Mcp` role or both; the [chart](../charts/tutorizr/README.md) runs a single replica so only one Comms
 subscriber exists. Redis holds the learner state and the communications pipeline's delivery state.
-The live voice client is a separate Windows application and is not deployed by the chart.
+The live voice client is a separate Android and Windows application and is not deployed by the chart.
 
 ```mermaid
 flowchart LR
@@ -21,11 +21,11 @@ flowchart LR
     classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
 
     learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway<br/>signalizr]:::external
-    voiceLearner([Learner on Windows]):::person <-->|speech| client
+    voiceLearner([Learner on a phone or PC]):::person <-->|speech| client
     subgraph tutorizr [tutorizr]
         host[Tutor host<br/>ASP.NET Core; Comms and Mcp roles]:::container
         redis[(Redis<br/>learner state, delivery deduplication)]:::store
-        client[Live voice client<br/>.NET MAUI on Windows, proof of concept]:::container
+        client[Live voice client<br/>.NET MAUI on Android and Windows, proof of concept]:::container
         host -->|hashes and sorted sets| redis
     end
     gateway -->|"gRPC deliveries"| host

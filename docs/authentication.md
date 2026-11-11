@@ -44,7 +44,9 @@ flowchart LR
 The client is a public client: it holds no secret, so the learner's sign-in is what authorizes it.
 [`MsalAccessTokenProvider`](../src/CasCap.App.Maui/Services/MsalAccessTokenProvider.cs) requests only
 the delegated `agent.realtime` scope of the runtime API. It opens the system browser rather than an
-embedded web view, receives the result on a loopback redirect, and uses no authentication broker.
+embedded web view and uses no authentication broker. The browser returns to the app on the
+`http://localhost` loopback redirect on Windows and on `io.github.f2calv.tutorizr://auth`, the
+application ID, on Android.
 [`BearerTokenHandler`](../src/CasCap.App.Maui/Services/BearerTokenHandler.cs) attaches the token to
 every request the typed Agentizr client sends.
 
@@ -60,12 +62,12 @@ sequenceDiagram
 
     Learner->>Page: Start
     Page->>Msal: Token for the call request
-    Msal->>Msal: Silent acquisition from the in-memory cache
+    Msal->>Msal: Silent acquisition from the token cache
     alt No cached account or interaction required
-        Msal->>Browser: Open authorize URL, loopback redirect
+        Msal->>Browser: Open authorize URL with the platform redirect
         Learner->>Browser: Sign in and consent
         Browser->>Entra: Credentials
-        Entra-->>Msal: Authorization code on the loopback redirect
+        Entra-->>Msal: Authorization code on the redirect URI
         Msal->>Entra: Redeem code with PKCE
     end
     Entra-->>Msal: Delegated access token
@@ -78,7 +80,8 @@ sequenceDiagram
 ```
 
 Only one interactive sign-in runs at a time; requests that wait for it retry the silent path first.
-The token cache lives in memory, so restarting the client prompts again.
+On Android MSAL keeps the token cache in app-private storage; on Windows the cache lives in memory, so
+restarting the client prompts again.
 
 The token identifies the learner and the client registration. The runtime maps the registration's
 client ID to the tutor's tenant and applies the tutor definition; the client never sends a tenant,
@@ -87,9 +90,11 @@ provider's call ID.
 
 ### Client Configuration
 
-[`TutorClientConfig`](../src/CasCap.App.Maui/Models/_TutorClientConfig.cs) is validated at startup
-and read from .NET user secrets or `tutorizr__`-prefixed environment variables. None of these values
-is a secret, but they identify a directory and a registration, so keep them out of tracked files.
+[`TutorClientConfig`](../src/CasCap.App.Maui/Models/_TutorClientConfig.cs) and the runtime address are
+validated when the first call starts. On Windows they are read from .NET user secrets or
+`tutorizr__`-prefixed environment variables. On Android the learner enters them on the Settings tab,
+which stores them in app preferences, so an APK built in public CI carries none of them. None of these
+values is a secret, but they identify a directory and a registration, so keep them out of tracked files.
 
 | Key | Purpose |
 | --- | --- |
@@ -99,6 +104,8 @@ is a secret, but they identify a directory and a registration, so keep them out 
 | `TutorClientConfig:AgentName` | Agent whose definition offers realtime calls |
 | `CasCap:AgentRuntimeClientOptions:BaseAddress` | Runtime base address, for example `https://runtime.example.com/` |
 
+On Windows:
+
 ```powershell
 dotnet user-secrets --project src/CasCap.App.Maui set "TutorClientConfig:TenantId" "00000000-0000-0000-0000-000000000000"
 dotnet user-secrets --project src/CasCap.App.Maui set "TutorClientConfig:ClientId" "00000000-0000-0000-0000-000000000000"
@@ -107,9 +114,13 @@ dotnet user-secrets --project src/CasCap.App.Maui set "TutorClientConfig:AgentNa
 dotnet user-secrets --project src/CasCap.App.Maui set "CasCap:AgentRuntimeClientOptions:BaseAddress" "https://runtime.example.com/"
 ```
 
-The public client registration needs a mobile and desktop platform with the `http://localhost`
-redirect URI, the delegated `agent.realtime` permission on the runtime API, and its client ID added
-to the tutor tenant's caller list in the runtime.
+The public client registration needs a mobile and desktop platform with the `http://localhost` and
+`io.github.f2calv.tutorizr://auth` redirect URIs, the delegated `agent.realtime` permission on the
+runtime API, and its client ID added to the tutor tenant's caller list in the runtime.
+
+A self-hosted runtime behind a private certificate authority needs that authority installed on the
+phone as a user certificate. The Android app trusts user-installed authorities as well as system
+ones so it can reach such a runtime; it accepts no cleartext traffic.
 
 ## Tutor Host To Runtime
 

@@ -1,20 +1,15 @@
-using Microsoft.Extensions.Configuration;
-
 namespace CasCap;
 
 /// <summary>Configures and creates the MAUI application host.</summary>
-public static class MauiProgram
+public static partial class MauiProgram
 {
-    private const string EnvironmentVariablePrefix = "tutorizr__";
-
     /// <summary>Creates the configured MAUI application.</summary>
     /// <returns>The configured application host.</returns>
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<TutorApp>();
-        builder.Configuration.AddUserSecrets<TutorApp>(optional: true);
-        builder.Configuration.AddEnvironmentVariables(EnvironmentVariablePrefix);
+        AddPlatformServices(builder);
 
         builder.Services.AddOptionsWithValidateOnStart<TutorClientConfig>()
             .Bind(builder.Configuration.GetSection(TutorClientConfig.ConfigurationSectionName))
@@ -32,4 +27,8 @@ public static class MauiProgram
 
         return builder.Build();
     }
+
+    /// <summary>Adds the current platform's configuration sources and services.</summary>
+    /// <param name="builder">The application builder.</param>
+    static partial void AddPlatformServices(MauiAppBuilder builder);
 }

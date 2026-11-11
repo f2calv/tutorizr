@@ -1,4 +1,5 @@
 using Microsoft.Identity.Client;
+using Microsoft.Maui.ApplicationModel;
 
 namespace CasCap.Services;
 
@@ -6,13 +7,12 @@ namespace CasCap.Services;
 /// Signs the learner in through the tutor's public client registration and returns delegated Agent Runtime tokens.
 /// </summary>
 /// <remarks>
-/// Uses the system browser with a loopback redirect. TODO: persist the MSAL token cache (for example with
+/// Uses the system browser and no authentication broker; each platform supplies its redirect URI. MSAL persists the
+/// cache in app-private storage on Android. TODO: persist the Windows cache (for example with
 /// Microsoft.Identity.Client.Extensions.Msal) so a restart does not prompt again; kept in memory for the proof of concept.
 /// </remarks>
-public sealed class MsalAccessTokenProvider
+public sealed partial class MsalAccessTokenProvider
 {
-    private const string LoopbackRedirectUri = "http://localhost";
-
     private readonly IPublicClientApplication _application;
     private readonly string[] _scopes;
     private readonly SemaphoreSlim _interactiveLock = new(1, 1);
@@ -25,7 +25,7 @@ public sealed class MsalAccessTokenProvider
 
         _application = PublicClientApplicationBuilder.Create(config.Value.ClientId)
             .WithTenantId(config.Value.TenantId)
-            .WithRedirectUri(LoopbackRedirectUri)
+            .WithRedirectUri(RedirectUri)
             .Build();
         _scopes = [config.Value.ApiScope!];
     }
@@ -42,9 +42,9 @@ public sealed class MsalAccessTokenProvider
         {
             // Another caller may have completed sign-in while this one waited.
             return await TryAcquireSilentAsync(cancellationToken)
-                ?? (await _application.AcquireTokenInteractive(_scopes)
+                ?? (await MainThread.InvokeOnMainThreadAsync(() => WithParent(_application.AcquireTokenInteractive(_scopes))
                     .WithUseEmbeddedWebView(false)
-                    .ExecuteAsync(cancellationToken)).AccessToken;
+                    .ExecuteAsync(cancellationToken))).AccessToken;
         }
         finally
         {
@@ -66,4 +66,10 @@ public sealed class MsalAccessTokenProvider
             return null;
         }
     }
+
+    /// <summary>Gets the redirect URI registered for this platform on the public client.</summary>
+    private static partial string RedirectUri { get; }
+
+    /// <summary>Attaches the platform's parent activity or window to an interactive sign-in.</summary>
+    private static partial AcquireTokenInteractiveParameterBuilder WithParent(AcquireTokenInteractiveParameterBuilder builder);
 }

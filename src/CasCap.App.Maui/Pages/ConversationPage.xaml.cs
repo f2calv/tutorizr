@@ -17,7 +17,7 @@ public sealed partial class ConversationPage : ContentPage
     private static readonly TimeSpan HangUpTimeout = TimeSpan.FromSeconds(5);
     private const int MaxTranscriptLines = 40;
     private const string MediaFailureMessage =
-        "Could not open the microphone or start call audio. Check the Windows microphone privacy settings.";
+        "Could not open the microphone or start call audio. Check the app's microphone permission.";
 
     private readonly TutorCallService _callService;
     private readonly ILogger<ConversationPage> _logger;
@@ -82,8 +82,7 @@ public sealed partial class ConversationPage : ContentPage
         }
         catch (OptionsValidationException)
         {
-            await FailAsync("Tutor settings are incomplete. Set TutorClientConfig and "
-                + "CasCap:AgentRuntimeClientOptions:BaseAddress in user secrets.");
+            await FailAsync("Tutor settings are incomplete. Enter them on the Settings tab, or in user secrets on Windows.");
         }
         catch (MsalException ex)
         {
