@@ -1,11 +1,9 @@
-using Azure.Core;
-using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 
 namespace CasCap;
 
 /// <summary>Configures and creates the MAUI application host.</summary>
-public static partial class MauiProgram
+public static class MauiProgram
 {
     private const string EnvironmentVariablePrefix = "tutorizr__";
 
@@ -18,29 +16,20 @@ public static partial class MauiProgram
         builder.Configuration.AddUserSecrets<TutorApp>(optional: true);
         builder.Configuration.AddEnvironmentVariables(EnvironmentVariablePrefix);
 
-        builder.Services.AddOptionsWithValidateOnStart<RealtimeConfig>()
-            .Bind(builder.Configuration.GetSection(RealtimeConfig.ConfigurationSectionName))
+        builder.Services.AddOptionsWithValidateOnStart<TutorClientConfig>()
+            .Bind(builder.Configuration.GetSection(TutorClientConfig.ConfigurationSectionName))
             .ValidateDataAnnotations();
-        builder.Services.AddSingleton<TokenCredential>(_ => CreateCredential(builder.Configuration["AzureTenantId"]));
-        builder.Services.AddSingleton<RealtimeConversation>();
+        builder.Services.AddSingleton<MsalAccessTokenProvider>();
+        builder.Services.AddTransient<BearerTokenHandler>();
+        builder.Services.AddAgentRuntimeClient().AddHttpMessageHandler<BearerTokenHandler>();
+        builder.Services.AddTransient<TutorCallService>();
         builder.Services.AddTransient<ConversationPage>();
-        AddPlatformServices(builder);
 
 #if DEBUG
+        builder.Services.AddHybridWebViewDeveloperTools();
         builder.Logging.AddDebug();
 #endif
 
         return builder.Build();
     }
-
-    // TODO: replace with MSAL public-client sign-in when the Android target is added; a single developer workstation
-    // signs in through the Azure CLI or Visual Studio, falling back to the system browser.
-    private static ChainedTokenCredential CreateCredential(string? tenantId) => new(
-        new AzureCliCredential(new AzureCliCredentialOptions { TenantId = tenantId }),
-        new VisualStudioCredential(new VisualStudioCredentialOptions { TenantId = tenantId }),
-        new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions { TenantId = tenantId }));
-
-    /// <summary>Registers the audio devices implemented by the current platform.</summary>
-    /// <param name="builder">The application builder.</param>
-    static partial void AddPlatformServices(MauiAppBuilder builder);
 }

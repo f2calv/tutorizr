@@ -3,17 +3,13 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Azure.Core" Version="1.64.0" />
-    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.92.0" />
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.120" />
-    <PackageVersion Include="NAudio" Version="3.3.0" />
     <PackageVersion Include="CasCap.Api.Azure.Auth" Version="2.0.0" />
     <PackageVersion Include="CasCap.Comms.AI" Version="1.2.0" />
     <PackageVersion Include="CasCap.Common.Caching" Version="5.1.0" />

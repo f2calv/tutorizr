@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- TODO: add net10.0-android once realtime audio is proven on Windows; see the dotnet-maui skill for the pattern. -->
+    <!-- TODO: add net10.0-android once the brokered WebRTC call is proven on Windows; see the dotnet-maui skill for the pattern. -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <UseMaui>true</UseMaui>
@@ -25,20 +25,26 @@
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#17171a" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#17171a" BaseSize="128,128" />
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.Identity.Client" />
     <PackageReference Include="Microsoft.Maui.Controls" />
-    <PackageReference Include="NAudio" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CasCap.App.Realtime\CasCap.App.Realtime.csproj" />
+  <!-- TODO: pin CasCap.AgentRuntime.Client to the first Agentizr release with realtime calls and build this project
+       in Release CI; until then the client is Debug-only and builds against the adjacent Agentizr checkout. -->
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <PackageReference Include="CasCap.AgentRuntime.Client" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'!='Release'">
+    <ProjectReference Include="..\..\..\agentizr\src\CasCap.AgentRuntime.Client\CasCap.AgentRuntime.Client.csproj" />
   </ItemGroup>
 </Project>

@@ -33,13 +33,16 @@ flowchart LR
     host -->|"streamed agent runs"| runtime[Agentizr agent runtime]:::external
     runtime -->|"MCP tool calls, Basic auth"| host
     host -.->|"optional transcription and speech"| speech[Speech providers]:::external
-    client <-->|"realtime audio over WebSocket"| realtime[Azure OpenAI realtime model]:::external
+    client -->|"call setup and hang-up, delegated token"| runtime
+    client <-->|"WebRTC audio and transcripts"| realtime[Azure OpenAI realtime model]:::external
+    runtime -->|"session, instructions and tool control"| realtime
 ```
 
-The client currently authenticates to Azure OpenAI with the signed-in user's Microsoft Entra
-identity and a local prompt. In the target design, proposed in
-[agentizr#29](https://github.com/f2calv/agentizr/pull/29), the client posts a WebRTC offer to
-Agentizr, which applies the tutor definition and executes learner tools on the client's behalf.
+The client signs the learner in through its public client registration and posts a WebRTC offer to
+Agentizr's realtime calls endpoint ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)). Agentizr
+applies the tutor definition, negotiates the call with Azure OpenAI and runs the learner tools over the
+same MCP endpoint the chat channel uses. The client never sees instructions, tool calls or provider
+credentials.
 
 ## Host Components
 
@@ -88,8 +91,8 @@ package.
 | Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
 | Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
-| Realtime conversation | Streams microphone audio, plays replies as they arrive and truncates interrupted replies to what was heard | `src/CasCap.App.Realtime/Services/RealtimeConversation.cs` | `RealtimeConversation` | `IRealtimeAudioInput`, `IRealtimeAudioOutput`, `TokenCredential` |
-| Windows audio | WASAPI capture in communications mode for echo cancellation, and streamed playback | `src/CasCap.App.Maui/Platforms/Windows/Services/` | `IRealtimeAudioInput`, `IRealtimeAudioOutput` | NAudio |
+| Voice call page | Signs the learner in, exchanges the WebRTC offer and answer with Agentizr and shows call state and transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs` | Start, Mute and End | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs) realtime call methods, `MsalAccessTokenProvider` |
+| Call media | Opens the microphone with echo cancellation, plays tutor audio and forwards transcripts from the filtered event channel | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | WebView2 microphone permission |
 
 ## Runtime Scenarios
 

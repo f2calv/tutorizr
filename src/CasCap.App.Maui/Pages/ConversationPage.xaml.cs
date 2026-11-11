@@ -1,117 +1,207 @@
-using Azure.Identity;
-using CasCap.Exceptions;
-using System.Net.WebSockets;
+using Microsoft.Identity.Client;
+using System.Net;
+using System.Text.Json;
 
 namespace CasCap.Pages;
 
-/// <summary>Starts, mutes and ends a live tutor conversation and shows its state and transient transcript.</summary>
+/// <summary>Starts, mutes and ends a live tutor call and shows its state and transient transcript.</summary>
+/// <remarks>
+/// The hosted web view owns the microphone and WebRTC media; this page exchanges the SDP offer and answer with the
+/// Agent Runtime, which applies the tutor's instructions and runs its tools.
+/// </remarks>
 public sealed partial class ConversationPage : ContentPage
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan MediaTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan HangUpTimeout = TimeSpan.FromSeconds(5);
     private const int MaxTranscriptLines = 40;
+    private const string MediaFailureMessage =
+        "Could not open the microphone or start call audio. Check the Windows microphone privacy settings.";
 
-    private readonly RealtimeConversation _conversation;
+    private readonly TutorCallService _callService;
     private readonly ILogger<ConversationPage> _logger;
     private readonly Queue<string> _transcript = new();
+    private TutorCallState _state = TutorCallState.Disconnected;
+    private bool _muted;
 
     /// <summary>Initializes a new instance of the <see cref="ConversationPage"/> class.</summary>
-    /// <param name="conversation">The application's single realtime conversation.</param>
+    /// <param name="callService">Starts and ends calls through the Agent Runtime.</param>
     /// <param name="logger">The page logger.</param>
-    public ConversationPage(RealtimeConversation conversation, ILogger<ConversationPage> logger)
+    public ConversationPage(TutorCallService callService, ILogger<ConversationPage> logger)
     {
-        ArgumentNullException.ThrowIfNull(conversation);
+        ArgumentNullException.ThrowIfNull(callService);
         ArgumentNullException.ThrowIfNull(logger);
 
         InitializeComponent();
-        _conversation = conversation;
+        _callService = callService;
         _logger = logger;
-        _conversation.StateChanged += (_, _) => MainThread.BeginInvokeOnMainThread(Render);
-        _conversation.TranscriptReceived += (_, transcript) =>
-        {
-            if (transcript.IsFinal)
-                MainThread.BeginInvokeOnMainThread(() => AddTranscript(transcript));
-        };
-        _conversation.Notice += (_, message) => MainThread.BeginInvokeOnMainThread(() => DetailLabel.Text = message);
-        _conversation.Faulted += (_, message) => MainThread.BeginInvokeOnMainThread(() => DetailLabel.Text = message);
         Render();
+    }
+
+    /// <inheritdoc/>
+    protected override async void OnDisappearing()
+    {
+        base.OnDisappearing();
+        await EndCallAsync();
     }
 
     private async void OnStartClicked(object? sender, EventArgs e)
     {
         DetailLabel.Text = string.Empty;
-        StartButton.IsEnabled = false;
+        _transcript.Clear();
+        TranscriptLabel.Text = string.Empty;
+        _muted = false;
+        SetState(TutorCallState.Connecting);
         try
         {
             using var timeout = new CancellationTokenSource(ConnectTimeout);
-            await _conversation.StartAsync(timeout.Token);
+            if (await CallView.InvokeJavaScriptAsync("createOffer", CallPageJsonContext.Default.String)
+                .WaitAsync(MediaTimeout, timeout.Token) is not { } offer)
+            {
+                await FailAsync(MediaFailureMessage);
+                return;
+            }
+            var answer = await _callService.StartAsync(offer, timeout.Token);
+            if (answer is null)
+            {
+                await HangUpViewAsync();
+                DetailLabel.Text = "This tutor does not offer voice calls. Check TutorClientConfig:AgentName and the "
+                    + "agent's realtime settings.";
+                SetState(TutorCallState.Disconnected);
+                return;
+            }
+            if (!await CallView.InvokeJavaScriptAsync(
+                "acceptAnswer", CallPageJsonContext.Default.Boolean, [answer], [CallPageJsonContext.Default.String])
+                .WaitAsync(MediaTimeout, timeout.Token))
+            {
+                await FailAsync(MediaFailureMessage);
+                return;
+            }
+            SetState(TutorCallState.Listening);
         }
         catch (OptionsValidationException)
         {
-            DetailLabel.Text = "Realtime configuration is incomplete. Set RealtimeConfig:Endpoint in user secrets or "
-                + "the tutorizr__RealtimeConfig__Endpoint environment variable.";
+            await FailAsync("Tutor settings are incomplete. Set TutorClientConfig and "
+                + "CasCap:AgentRuntimeClientOptions:BaseAddress in user secrets.");
         }
-        catch (RealtimeAudioDeviceException ex)
+        catch (MsalException ex)
         {
-            DetailLabel.Text = ex.Message;
+            _logger.LogWarning(ex, "{ClassName} sign-in failed", nameof(ConversationPage));
+            await FailAsync("Sign-in failed or was cancelled.");
         }
-        catch (AuthenticationFailedException ex)
+        catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Azure sign-in failed");
-            DetailLabel.Text = "Azure sign-in failed. Run 'az login', or complete the browser sign-in.";
-        }
-        catch (WebSocketException ex)
-        {
-            _logger.LogWarning(ex, "Realtime connection failed");
-            DetailLabel.Text = "Could not connect to Azure OpenAI. Check the endpoint, deployment name and that your "
-                + "account has the Cognitive Services OpenAI User role.";
+            _logger.LogWarning(ex, "{ClassName} call setup failed", nameof(ConversationPage));
+            await FailAsync(ex.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Your account is not allowed to start tutor calls.",
+                HttpStatusCode.TooManyRequests => "The tutor is busy with other calls; please try again shortly.",
+                _ => "Could not start the call through the Agent Runtime.",
+            });
         }
         catch (OperationCanceledException)
         {
-            DetailLabel.Text = "Connecting took too long; please try again.";
+            await FailAsync("Connecting took too long; please try again.");
         }
-        finally
+        catch (TimeoutException)
         {
-            Render();
+            await FailAsync(MediaFailureMessage);
         }
     }
 
     private async void OnMuteClicked(object? sender, EventArgs e)
     {
-        try
-        {
-            await _conversation.SetMutedAsync(!_conversation.IsMuted, CancellationToken.None);
-        }
-        catch (Exception ex) when (ex is WebSocketException or InvalidOperationException or ObjectDisposedException)
-        {
-            _logger.LogWarning(ex, "Mute request failed");
-        }
+        _muted = !_muted;
+        await CallView.InvokeJavaScriptAsync(
+            "setMuted", CallPageJsonContext.Default.Boolean, [_muted], [CallPageJsonContext.Default.Boolean]);
         Render();
     }
 
     private async void OnEndClicked(object? sender, EventArgs e)
     {
         EndButton.IsEnabled = false;
-        await _conversation.StopAsync();
-        Render();
+        await EndCallAsync();
     }
 
-    private void AddTranscript(RealtimeTranscript transcript)
+    private void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
     {
-        _transcript.Enqueue($"{(transcript.Speaker == RealtimeSpeaker.Tutor ? "Tutor" : "You")}: {transcript.Text}");
+        if (e.Message is null)
+            return;
+        using var message = JsonDocument.Parse(e.Message);
+        var root = message.RootElement;
+        switch (root.GetProperty("type").GetString())
+        {
+            case "transcript":
+                AddTranscript(root.GetProperty("speaker").GetString() == "tutor" ? "Tutor" : "You",
+                    root.GetProperty("text").GetString() ?? string.Empty);
+                break;
+            case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking:
+                var value = root.GetProperty("value").GetString();
+                if (value == "failed")
+                    _ = FailAsync("The call connection was lost.");
+                else
+                    SetState(value == "speaking" ? TutorCallState.Speaking : TutorCallState.Listening);
+                break;
+        }
+    }
+
+    private void OnCallViewInitialized(object? sender, WebViewInitializedEventArgs e) => AllowMicrophone(e);
+
+    /// <summary>Lets the hosted call page open the microphone.</summary>
+    /// <param name="e">The platform web view initialization arguments.</param>
+    partial void AllowMicrophone(WebViewInitializedEventArgs e);
+
+    private async Task EndCallAsync()
+    {
+        await HangUpViewAsync();
+        await _callService.EndAsync(CancellationToken.None);
+        if (_state != TutorCallState.Error)
+            SetState(TutorCallState.Disconnected);
+    }
+
+    private async Task FailAsync(string message)
+    {
+        await HangUpViewAsync();
+        await _callService.EndAsync(CancellationToken.None);
+        DetailLabel.Text = message;
+        SetState(TutorCallState.Error);
+    }
+
+    private async Task HangUpViewAsync()
+    {
+        try
+        {
+            await CallView.InvokeJavaScriptAsync("hangUp", CallPageJsonContext.Default.Boolean).WaitAsync(HangUpTimeout);
+        }
+        catch (TimeoutException ex)
+        {
+            // Ending the runtime call matters more than confirming the web view released the microphone.
+            _logger.LogWarning(ex, "{ClassName} web view did not confirm hang-up", nameof(ConversationPage));
+        }
+    }
+
+    private void AddTranscript(string speaker, string text)
+    {
+        _transcript.Enqueue($"{speaker}: {text}");
         while (_transcript.Count > MaxTranscriptLines)
             _transcript.Dequeue();
         TranscriptLabel.Text = string.Join(Environment.NewLine + Environment.NewLine, _transcript);
         _ = TranscriptScroll.ScrollToAsync(TranscriptLabel, ScrollToPosition.End, animated: false);
     }
 
+    private void SetState(TutorCallState state)
+    {
+        _state = state;
+        Render();
+    }
+
     private void Render()
     {
-        var state = _conversation.State;
-        var active = state is not (RealtimeConversationState.Disconnected or RealtimeConversationState.Error);
-        StateLabel.Text = _conversation.IsMuted ? $"{state} (muted)" : state.ToString();
-        StartButton.IsEnabled = !active;
-        MuteButton.IsEnabled = active && state != RealtimeConversationState.Connecting;
-        MuteButton.Text = _conversation.IsMuted ? "Unmute" : "Mute";
-        EndButton.IsEnabled = MuteButton.IsEnabled;
+        var active = _state is TutorCallState.Listening or TutorCallState.Speaking;
+        StateLabel.Text = _muted && active ? $"{_state} (muted)" : _state.ToString();
+        StartButton.IsEnabled = _state is TutorCallState.Disconnected or TutorCallState.Error;
+        MuteButton.IsEnabled = active;
+        MuteButton.Text = _muted ? "Unmute" : "Mute";
+        EndButton.IsEnabled = active || _state == TutorCallState.Connecting;
     }
 }
