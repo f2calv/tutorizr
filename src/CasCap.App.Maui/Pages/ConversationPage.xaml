@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CasCap.Pages.ConversationPage"
+             Title="Tutor">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="24" RowSpacing="16">
+        <Label Text="Live German tutor" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Grid.Row="1" Style="{StaticResource IntroLabelStyle}"
+               Text="Your voice is streamed to Azure OpenAI while a session is active. Audio and transcripts are not stored." />
+        <VerticalStackLayout Grid.Row="2" Spacing="4">
+            <Label x:Name="StateLabel" Style="{StaticResource SectionTitleLabelStyle}" />
+            <Label x:Name="DetailLabel" Style="{StaticResource IntroLabelStyle}" />
+        </VerticalStackLayout>
+        <HorizontalStackLayout Grid.Row="3" Spacing="12">
+            <Button x:Name="StartButton" Text="Start" Clicked="OnStartClicked"
+                    SemanticProperties.Hint="Starts a live conversation with the tutor" />
+            <Button x:Name="MuteButton" Text="Mute" Clicked="OnMuteClicked"
+                    SemanticProperties.Hint="Stops or resumes sending your microphone" />
+            <Button x:Name="EndButton" Text="End" Clicked="OnEndClicked"
+                    SemanticProperties.Hint="Ends the conversation and releases the microphone" />
+        </HorizontalStackLayout>
+        <ScrollView Grid.Row="4" x:Name="TranscriptScroll">
+            <Label x:Name="TranscriptLabel" />
+        </ScrollView>
+    </Grid>
+</ContentPage>
