@@ -68,7 +68,9 @@ and full chat prerequisites.
 
 tutorizr gives an Agentizr tutor agent its channels and its learner-progress tools. The
 [architecture drilldown](docs/architecture.md) opens this box into its containers and components
-and describes the artifact publication flow.
+and describes the artifact publication flow. The [authentication guide](docs/authentication.md)
+explains learner sign-in in the voice client, the host's runtime identity and the protected MCP
+endpoint.
 
 ```mermaid
 flowchart LR
