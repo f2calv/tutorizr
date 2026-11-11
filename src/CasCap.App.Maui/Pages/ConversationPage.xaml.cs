@@ -1,3 +1,4 @@
+using CasCap.AgentRuntime.Contracts.V1;
 using Microsoft.Identity.Client;
 using System.Net;
 using System.Text.Json;
@@ -138,7 +139,7 @@ public sealed partial class ConversationPage : ContentPage
             case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking:
                 var value = root.GetProperty("value").GetString();
                 if (value == "failed")
-                    _ = FailAsync("The call connection was lost.");
+                    _ = EndCallAsync();
                 else
                     SetState(value == "speaking" ? TutorCallState.Speaking : TutorCallState.Listening);
                 break;
@@ -151,12 +152,29 @@ public sealed partial class ConversationPage : ContentPage
     /// <param name="e">The platform web view initialization arguments.</param>
     partial void AllowMicrophone(WebViewInitializedEventArgs e);
 
+    // Also runs when media drops, so the runtime's summary explains a hang-up it made itself.
     private async Task EndCallAsync()
     {
         await HangUpViewAsync();
-        await _callService.EndAsync(CancellationToken.None);
+        var summary = await _callService.EndAsync(CancellationToken.None);
+        if (_state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting)
+            DetailLabel.Text = summary is null ? "The call connection was lost." : Describe(summary);
         if (_state != TutorCallState.Error)
             SetState(TutorCallState.Disconnected);
+    }
+
+    private static string Describe(RealtimeCallSummaryResponse summary)
+    {
+        var ending = summary.EndReason switch
+        {
+            RealtimeCallEndReason.ClientRequested => "Call ended.",
+            RealtimeCallEndReason.MaximumDuration => "The call reached its time limit.",
+            RealtimeCallEndReason.HostShutdown => "The tutor service restarted and ended the call.",
+            _ => "The call connection was lost.",
+        };
+        var cost = summary.EstimatedCost is { } estimate ? $", about {estimate.Amount:0.00} {estimate.Currency}" : string.Empty;
+        return $"{ending} It lasted {summary.DurationSeconds / 60}:{summary.DurationSeconds % 60:00} and used "
+            + $"{summary.Usage.TotalTokens:N0} tokens{cost}.";
     }
 
     private async Task FailAsync(string message)

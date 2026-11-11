@@ -1,4 +1,5 @@
 using CasCap.AgentRuntime.Client.Abstractions;
+using CasCap.AgentRuntime.Contracts.V1;
 
 namespace CasCap.Services;
 
@@ -29,21 +30,25 @@ public sealed class TutorCallService(
         return response?.SdpAnswer;
     }
 
-    /// <summary>Ends the active call, if any, so the runtime hangs up and releases its tool connections.</summary>
+    /// <summary>
+    /// Ends the active call, if any, so the runtime hangs up and releases its tool connections, and returns why it
+    /// ended and what it used; <see langword="null"/> when there was no call or the runtime no longer knows it.
+    /// </summary>
     /// <param name="cancellationToken">Cancels the hang-up request.</param>
-    public async Task EndAsync(CancellationToken cancellationToken)
+    public async Task<RealtimeCallSummaryResponse?> EndAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref _callId, null) is not { } callId)
-            return;
+            return null;
         try
         {
-            await client.EndRealtimeCallAsync(config.Value.AgentName!, callId, cancellationToken);
+            return await client.EndRealtimeCallAsync(config.Value.AgentName!, callId, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
             // The runtime still hangs up when the call reaches its maximum duration or loses control.
             if (logger.IsEnabled(LogLevel.Warning))
                 logger.LogWarning(ex, "{ClassName} could not end the realtime call", nameof(TutorCallService));
+            return null;
         }
     }
 }
