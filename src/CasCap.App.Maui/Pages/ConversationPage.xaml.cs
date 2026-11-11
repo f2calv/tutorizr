@@ -155,8 +155,10 @@ public sealed partial class ConversationPage : ContentPage
     // Also runs when media drops, so the runtime's summary explains a hang-up it made itself.
     private async Task EndCallAsync()
     {
+        // Ask the runtime first so it records the learner's request before the provider sees media close.
+        var ending = _callService.EndAsync(CancellationToken.None);
         await HangUpViewAsync();
-        var summary = await _callService.EndAsync(CancellationToken.None);
+        var summary = await ending;
         if (_state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting)
             DetailLabel.Text = summary is null ? "The call connection was lost." : Describe(summary);
         if (_state != TutorCallState.Error)
