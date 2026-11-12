@@ -103,7 +103,7 @@ EXPOSE 8080
 
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
 LABEL org.opencontainers.image.title="$WORKLOAD" \
-    org.opencontainers.image.description="German language tutor over Signal" \
+    org.opencontainers.image.description="Subject-agnostic tutor host on the Agentizr agent runtime" \
     org.opencontainers.image.source="https://github.com/f2calv/tutorizr" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.version="$GIT_TAG" \

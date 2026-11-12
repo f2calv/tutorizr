@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>tutorizr call</title>
+    <link rel="icon" href="data:,">
+    <script src="_framework/hybridwebview.js"></script>
+    <script>
+        // Owns the microphone, WebRTC media and the filtered event channel. The host exchanges SDP with the
+        // Agent Runtime; this page never sees tokens, instructions or tool calls.
+        let peer = null;
+        let microphone = null;
+        let meter = null;
+
+        function notify(message) {
+            window.HybridWebView.SendRawMessage(JSON.stringify(message));
+        }
+
+        // Reports when the microphone hears sound, so the app can show the learner that audio is reaching the call.
+        function startMeter(stream) {
+            const context = new AudioContext();
+            const analyser = context.createAnalyser();
+            analyser.fftSize = 512;
+            context.createMediaStreamSource(stream).connect(analyser);
+            const samples = new Float32Array(analyser.fftSize);
+            let hearing = false;
+            let quietSince = 0;
+            const timer = setInterval(() => {
+                analyser.getFloatTimeDomainData(samples);
+                const level = Math.sqrt(samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length);
+                const muted = !stream.getAudioTracks().some(track => track.enabled);
+                const now = Date.now();
+                if (!muted && level > 0.02) {
+                    quietSince = now;
+                    if (!hearing) {
+                        hearing = true;
+                        notify({ type: 'microphone', hearing: true });
+                    }
+                } else if (hearing && now - quietSince > 300) {
+                    hearing = false;
+                    notify({ type: 'microphone', hearing: false });
+                }
+            }, 100);
+            return { stop: () => { clearInterval(timer); context.close(); } };
+        }
+
+        function onProviderEvent(event) {
+            switch (event.type) {
+                case 'conversation.item.input_audio_transcription.completed':
+                    notify({ type: 'transcript', speaker: 'learner', text: event.transcript ?? '' });
+                    break;
+                case 'response.output_audio_transcript.done':
+                    notify({ type: 'transcript', speaker: 'tutor', text: event.transcript ?? '' });
+                    break;
+                case 'output_audio_buffer.started':
+                    notify({ type: 'state', value: 'speaking' });
+                    break;
+                case 'output_audio_buffer.stopped':
+                case 'output_audio_buffer.cleared':
+                case 'input_audio_buffer.speech_started':
+                    notify({ type: 'state', value: 'listening' });
+                    break;
+            }
+        }
+
+        // Returns the SDP offer, or null when the microphone or peer connection cannot start.
+        async function createOffer() {
+            hangUp();
+            try {
+                microphone = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                });
+                peer = new RTCPeerConnection();
+                peer.ontrack = event => { document.getElementById('remote').srcObject = event.streams[0]; };
+                peer.onconnectionstatechange = () => {
+                    if (peer && (peer.connectionState === 'failed' || peer.connectionState === 'disconnected'))
+                        notify({ type: 'state', value: 'failed' });
+                };
+                microphone.getTracks().forEach(track => peer.addTrack(track, microphone));
+                meter = startMeter(microphone);
+                peer.createDataChannel('oai-events').onmessage = message => onProviderEvent(JSON.parse(message.data));
+                await peer.setLocalDescription(await peer.createOffer());
+                return peer.localDescription.sdp;
+            } catch (error) {
+                console.error(error);
+                hangUp();
+                return null;
+            }
+        }
+
+        async function acceptAnswer(sdp) {
+            try {
+                await peer.setRemoteDescription({ type: 'answer', sdp: sdp });
+                return true;
+            } catch (error) {
+                console.error(error);
+                return false;
+            }
+        }
+
+        function setMuted(muted) {
+            microphone?.getAudioTracks().forEach(track => { track.enabled = !muted; });
+            return true;
+        }
+
+        function hangUp() {
+            meter?.stop();
+            peer?.close();
+            microphone?.getTracks().forEach(track => track.stop());
+            meter = null;
+            peer = null;
+            microphone = null;
+            return true;
+        }
+    </script>
+</head>
+<body>
+    <audio id="remote" autoplay></audio>
+</body>
+</html>

@@ -1,7 +1,9 @@
 # CasCap.App.Server
 
-The .NET 10 ASP.NET Core host for tutorizr. It runs Signal communications, learner-progress MCP
-tools, or both, against external Redis and Agent Runtime services.
+The .NET 10 ASP.NET Core host for tutorizr, the subject-agnostic tutor on the
+[Agentizr agent runtime](https://github.com/f2calv/agentizr). It runs Signal communications,
+learner-progress MCP tools, or both, against external Redis and Agentizr services. The subject a
+tutor teaches comes from its Agentizr agent definition; this host contains no teaching behaviour.
 
 ## Start Here
 
@@ -10,7 +12,8 @@ with Redis and without Key Vault or Signal. For full chat, set
 `CasCap:FeatureConfig:EnabledFeatures` to `Comms,Mcp` and supply:
 
 - A Signal gateway's REST/gRPC addresses, subscriber name and exact chat/monitor group names.
-- An accessible Agent Runtime with the selected agent definition, session and execution identity.
+- An accessible Agentizr runtime with the selected agent definition, session and execution identity.
+  The Comms pipeline calls it through [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs).
 - A runtime MCP connection to this host, with matching Basic credentials and explicit permission
   for the learner-writing tools.
 
@@ -31,6 +34,10 @@ there is no per-sender learner isolation.
 | [`CefrLevel`](Models/CefrLevel.cs), [`MistakeCategory`](Models/MistakeCategory.cs) | Accepted level and mistake classifications |
 
 ## MCP Contract
+
+The learner tools model language learning: CEFR levels, spaced-repetition terms and categorised
+mistakes. Spaced repetition and mistake tracking work for any subject with items to recall; the level
+tools assume a language tutor. The German tutor is the first example definition using them.
 
 The configurable MCP path defaults to `/mcp`. It uses stateless Streamable HTTP, requires Basic
 authentication and rejects requests carrying an `Origin` header with 403. Only explicitly registered
@@ -63,7 +70,7 @@ retrying a non-idempotent tool can record another review or mistake.
 When Comms is enabled, [`MessagingMcpQueryService`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/Services/MessagingMcpQueryService.cs)
 adds `create_poll`, `close_poll` and `get_poll_status`. Poll state is process-local and lost on restart.
 Tool annotations are metadata, not authorization: this host does not restrict write tools per client.
-The external runtime owns its tool allowlist and execution policy.
+The Agentizr runtime owns its tool allowlist and execution policy.
 
 `/healthz` and tagged `/healthz/{probe}` endpoints remain anonymous regardless of the feature set.
 Their availability alone does not prove that a gateway or runtime is reachable.

@@ -10,7 +10,7 @@ public enum MistakeCategory
     /// <summary>Wrong or unidiomatic word choice.</summary>
     Vocabulary,
 
-    /// <summary>Spelling, capitalisation or umlaut.</summary>
+    /// <summary>Spelling, capitalisation, accents or special characters.</summary>
     Spelling,
 
     /// <summary>Verb position or clause order.</summary>

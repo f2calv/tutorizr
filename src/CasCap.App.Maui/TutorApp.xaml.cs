@@ -17,5 +17,7 @@ public sealed partial class TutorApp : Application
 
     /// <inheritdoc/>
     protected override Window CreateWindow(IActivationState? activationState) =>
-        new(new AppShell(_serviceProvider.GetRequiredService<ConversationPage>()));
+        new(new AppShell(
+            _serviceProvider.GetRequiredService<ConversationPage>(),
+            _serviceProvider.GetService<SettingsPage>()));
 }
