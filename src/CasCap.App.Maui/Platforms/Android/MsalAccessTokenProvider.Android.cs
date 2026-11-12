@@ -10,6 +10,9 @@ public sealed partial class MsalAccessTokenProvider
 
     private static partial string RedirectUri => RedirectScheme + "://auth";
 
+    // MSAL.Android already persists the cache in app-private storage.
+    private static partial Task RegisterPersistentCacheAsync(ITokenCache cache) => Task.CompletedTask;
+
     private static partial AcquireTokenInteractiveParameterBuilder WithParent(AcquireTokenInteractiveParameterBuilder builder) =>
         builder.WithParentActivityOrWindow(Platform.CurrentActivity
             ?? throw new InvalidOperationException("Sign-in needs the app in the foreground."));

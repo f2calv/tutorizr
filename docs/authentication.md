@@ -80,8 +80,9 @@ sequenceDiagram
 ```
 
 Only one interactive sign-in runs at a time; requests that wait for it retry the silent path first.
-On Android MSAL keeps the token cache in app-private storage; on Windows the cache lives in memory, so
-restarting the client prompts again.
+On Android MSAL keeps the token cache in app-private storage. On Windows the client stores it in a
+file in its app data directory, encrypted with DPAPI for the signed-in Windows user, so a restart
+signs in silently until the refresh token expires.
 
 The token identifies the learner and the client registration. The runtime maps the registration's
 client ID to the tutor's tenant and applies the tutor definition; the client never sends a tenant,
