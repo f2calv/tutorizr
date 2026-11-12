@@ -44,8 +44,6 @@
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" />
   </ItemGroup>
 
-  <!-- TODO: pin CasCap.AgentRuntime.Client to the first Agentizr release with realtime calls and build this project
-       in Release CI; until then the client is Debug-only and builds against the adjacent Agentizr checkout. -->
   <ItemGroup Condition="'$(Configuration)'=='Release'">
     <PackageReference Include="CasCap.AgentRuntime.Client" />
   </ItemGroup>

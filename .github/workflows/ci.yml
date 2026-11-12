@@ -80,13 +80,9 @@ jobs:
       has-image: false
       push-chart: ${{ github.event_name != 'pull_request' }}
 
-  #TODO: Drop the VOICE_CLIENT_CI repository-variable gate and add the three voice client jobs to release.needs once
-  #Agentizr publishes a CasCap.AgentRuntime.Client release with realtime calls and Directory.Packages.props pins it;
-  #a Release build of the client cannot restore until then.
   #Unsigned Android validation bundle.
   build-android:
     needs: [versioning]
-    if: vars.VOICE_CLIENT_CI == 'true'
     uses: f2calv/gha-workflows/.github/workflows/deploy-maui-android.yml@v1
     permissions:
       contents: read
@@ -98,7 +94,6 @@ jobs:
   #Self-contained unpackaged Windows development build, uploaded as a short-lived artifact for manual testing.
   build-windows:
     needs: [versioning]
-    if: vars.VOICE_CLIENT_CI == 'true'
     uses: f2calv/gha-workflows/.github/workflows/build-maui-windows.yml@v1
     permissions:
       contents: read
@@ -112,8 +107,7 @@ jobs:
   #Dependabot and fork pull requests receive no secrets, so they cannot sign; build-android still validates them.
   build-apk:
     needs: [versioning]
-    if: vars.VOICE_CLIENT_CI == 'true'
-      && github.actor != 'dependabot[bot]'
+    if: github.actor != 'dependabot[bot]'
       && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: f2calv/gha-workflows/.github/workflows/deploy-maui-android.yml@v1
     permissions:
@@ -132,7 +126,7 @@ jobs:
       ANDROID_KEY_ALIAS: dcim-sideload
 
   release:
-    needs: [lint, versioning, build, helm, image, chart]
+    needs: [lint, versioning, build, helm, image, chart, build-android, build-windows, build-apk]
     if: needs.versioning.outputs.release-exists == 'false'
       && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     uses: f2calv/gha-workflows/.github/workflows/gha-release-versioning.yml@v1
