@@ -81,8 +81,53 @@ jobs:
       has-image: false
       push-chart: ${{ github.event_name != 'pull_request' }}
 
+  #Unsigned Android validation bundle.
+  build-android:
+    needs: [versioning]
+    uses: f2calv/gha-workflows/.github/workflows/deploy-maui-android.yml@v1
+    permissions:
+      contents: read
+    with:
+      project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      app-display-version: ${{ format('{0}.{1}.{2}', needs.versioning.outputs.major, needs.versioning.outputs.minor, needs.versioning.outputs.patch) }}
+      app-version-code: ${{ github.run_number }}
+
+  #Self-contained unpackaged Windows development build, uploaded as a short-lived artifact for manual testing.
+  build-windows:
+    needs: [versioning]
+    uses: f2calv/gha-workflows/.github/workflows/build-maui-windows.yml@v1
+    permissions:
+      contents: read
+    with:
+      project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      app-display-version: ${{ format('{0}.{1}.{2}', needs.versioning.outputs.major, needs.versioning.outputs.minor, needs.versioning.outputs.patch) }}
+      app-version-code: ${{ github.run_number }}
+
+  #Sideload APK signed with the shared sideload keystore, uploaded as a short-lived artifact for manual installs.
+  #Its clock-based version code matches build-apk.ps1, so CI and local APKs update each other in place.
+  #Dependabot and fork pull requests receive no secrets, so they cannot sign; build-android still validates them.
+  build-apk:
+    needs: [versioning]
+    if: github.actor != 'dependabot[bot]'
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: f2calv/gha-workflows/.github/workflows/deploy-maui-android.yml@v1
+    permissions:
+      contents: read
+    with:
+      project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      package-format: apk
+      sign: true
+      version-code-from-clock: true
+      app-display-version: ${{ format('{0}.{1}.{2}', needs.versioning.outputs.major, needs.versioning.outputs.minor, needs.versioning.outputs.patch) }}
+      artifact-name: android-apk-${{ needs.versioning.outputs.version }}
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIDELOAD_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_SIDELOAD_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_SIDELOAD_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: dcim-sideload
+
   release:
-    needs: [lint, versioning, build, helm, image, chart]
+    needs: [lint, versioning, build, helm, image, chart, build-android, build-windows, build-apk]
     if: needs.versioning.outputs.release-exists == 'false'
       && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     uses: f2calv/gha-workflows/.github/workflows/gha-release-versioning.yml@v1

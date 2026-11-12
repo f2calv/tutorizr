@@ -10,7 +10,7 @@ public enum CefrLevel
     /// <summary>Elementary.</summary>
     A2,
 
-    /// <summary>Intermediate; the Goethe-Zertifikat B1 level.</summary>
+    /// <summary>Intermediate.</summary>
     B1,
 
     /// <summary>Upper intermediate.</summary>

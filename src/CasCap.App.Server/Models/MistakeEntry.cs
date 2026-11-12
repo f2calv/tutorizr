@@ -15,8 +15,8 @@ public sealed record MistakeEntry
     [Description("What the learner wrote or said.")]
     public required string Incorrect { get; init; }
 
-    /// <summary>The corrected German.</summary>
-    [Description("The corrected German.")]
+    /// <summary>The corrected form.</summary>
+    [Description("The corrected form.")]
     public required string Correction { get; init; }
 
     /// <summary>Short explanation of the rule, if one was given.</summary>

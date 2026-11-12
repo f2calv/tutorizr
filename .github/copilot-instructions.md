@@ -12,8 +12,11 @@ Everything below is specific to this repository.
 
 ## Repository Role
 
-- Use the .NET 11 SDK pinned in `global.json` and C# 15. The server and its application-only
+- Use the .NET 11 SDK selected in `global.json` and C# 15. The server and its application-only
   tests remain single-targeted on .NET 11.
+- tutorizr is a subject-agnostic tutor on the Agentizr agent runtime; the German language tutor is
+  only the first example. Keep subject-specific wording out of the host, channels, voice path and
+  documentation; only the learner tool set may model a subject family, and it says so explicitly.
 - tutorizr is a Comms host for one Agent Runtime tenant. It owns the tutor's MCP tools and its
   learner store; the Agent Runtime owns definitions, providers, sessions and credentials.
 - Keep the tutor's teaching behaviour in its Agent Runtime definition, not in host code. Tools

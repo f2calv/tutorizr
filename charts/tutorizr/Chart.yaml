@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tutorizr
-description: Umbrella chart for tutorizr, a German language tutor answering a Signal group through the Agent Runtime.
+description: Umbrella chart for tutorizr, the Signal channel and learner tools of a subject-agnostic tutor on the Agentizr agent runtime.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

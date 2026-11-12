@@ -44,10 +44,10 @@ public sealed class TutorMcpQueryService(ILearnerStore store, IOptions<TutorConf
 
     /// <summary>Adds a term to the learner's vocabulary practice, or updates its meaning and level.</summary>
     [McpServerTool(ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Adds a German word or phrase to the learner's spaced-repetition practice. Adding a term that already exists updates its meaning and level but keeps its review progress.")]
+    [Description("Adds a word or phrase in the language being learned to the learner's spaced-repetition practice. Adding a term that already exists updates its meaning and level but keeps its review progress.")]
     public async Task<VocabularyItem> AddVocabulary(
-        [Description("German word or phrase, with its article for nouns, e.g. 'der Bahnhof'. At most 500 characters.")] string term,
-        [Description("English meaning. At most 500 characters.")] string meaning,
+        [Description("Word or phrase in the language being learned, including any article or grammatical marker, e.g. 'der Bahnhof' in German. At most 500 characters.")] string term,
+        [Description("Meaning in the learner's own language. At most 500 characters.")] string meaning,
         [Description("CEFR level of the term: A1, A2, B1, B2, C1 or C2.")] CefrLevel level,
         CancellationToken cancellationToken = default)
     {
@@ -93,7 +93,7 @@ public sealed class TutorMcpQueryService(ILearnerStore store, IOptions<TutorConf
     public async Task<MistakeEntry> RecordMistake(
         [Description("Kind of mistake: Grammar, Vocabulary, Spelling, WordOrder, Pronunciation or Other.")] MistakeCategory category,
         [Description("What the learner wrote or said. At most 500 characters.")] string incorrect,
-        [Description("The corrected German. At most 500 characters.")] string correction,
+        [Description("The corrected form. At most 500 characters.")] string correction,
         [Description("Optional short explanation of the rule. At most 500 characters.")] string? explanation = null,
         CancellationToken cancellationToken = default)
     {

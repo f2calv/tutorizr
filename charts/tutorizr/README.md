@@ -1,7 +1,9 @@
 # tutorizr
 
-The application umbrella chart for the tutorizr Signal tutor and learner MCP host. It configures
-one `workload` dependency under the `tutorizr` alias, with a single-subscriber rollout strategy.
+The application umbrella chart for the tutorizr host, the Signal channel and learner MCP tools of a
+subject-agnostic tutor on the [Agentizr agent runtime](https://github.com/f2calv/agentizr). It
+configures one `workload` dependency under the `tutorizr` alias, with a single-subscriber rollout
+strategy.
 
 ## Installation
 
@@ -84,5 +86,5 @@ graph TD
 The dependency is pinned to `workload` `1.7.0` from `oci://ghcr.io/f2calv/charts` in
 [`Chart.yaml`](https://github.com/f2calv/tutorizr/blob/main/charts/tutorizr/Chart.yaml).
 The generated `Chart.lock` records that exact dependency. The chart owns no templates of its own and bundles
-neither Redis, the Signal gateway nor the Agent Runtime. Its `.helmignore` excludes `ci/`,
+neither Redis, the Signal gateway nor the Agentizr runtime. Its `.helmignore` excludes `ci/`,
 `.git/`, `.github/` and `.copilot-tracking/` from packaging.
