@@ -7,10 +7,10 @@ publishing a different definition. tutorizr supplies the parts a runtime does no
 a learner reaches the tutor through and the learner-progress tools the tutor calls.
 
 - **Chat and voice notes:** a .NET 11 host relays a Signal group's conversation, including transcribed
-  voice notes, to the runtime through the [Comms pipeline](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md).
+  voice notes, to the runtime through the [Comms pipeline](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/README.md).
 - **Learner progress:** the same host exposes learner-progress tools over Model Context Protocol (MCP),
   backed by Redis, which the runtime calls during a lesson.
-- **Live voice:** a .NET MAUI client for Android and Windows holds continuous, interruptible voice calls through Agentizr's
+- **Live voice:** a .NET 11 MAUI client for Android and Windows holds continuous, interruptible voice calls through Agentizr's
   brokered realtime calls ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)): the runtime applies
   the tutor definition and runs its tools, while audio flows over WebRTC between the client and Azure OpenAI.
 
@@ -30,7 +30,7 @@ repository ships no tutor definition, model, word lists or exam material.
 
 ## Run the Learner Tools Locally
 
-Use the .NET 11 SDK selected in `global.json` and the [local Compose dependency](docker-compose.yml), or an existing dedicated
+Use a stable .NET 11 SDK and the [local Compose dependency](docker-compose.yml), or an existing dedicated
 development Redis instance. Release builds resolve every dependency from
 NuGet; Debug builds instead use adjacent source checkouts, as described in the
 [host development guide](src/CasCap.App.Server/README.md#development).
@@ -66,14 +66,18 @@ and full chat prerequisites.
 
 ## Run the Voice Client
 
+Use a stable .NET 11 SDK with MAUI 11 tooling. The client targets `net11.0-android` (minimum API 29)
+and, on Windows only, `net11.0-windows10.0.19041.0` as an unpackaged development app. Its direct
+MAUI Controls dependency is `11.0.10`; Microsoft Extensions dependencies use `11.0.0`.
+
 The voice client needs a runtime that brokers realtime calls and a public client registration, as
-described in the [authentication guide](docs/authentication.md#voice-client-sign-in). Until Agentizr
-publishes a client package with realtime calls, the app builds only in Debug against an adjacent
-Agentizr checkout.
+described in the [authentication guide](docs/authentication.md#voice-client-sign-in). Release builds
+use the published `CasCap.AgentRuntime.Client` `1.6.0`, including realtime calls; Debug builds use
+an adjacent Agentizr checkout.
 
 - **Windows:** set the settings in user secrets, then start the `Windows Machine` profile.
 - **Android:** deploy a Debug build to an emulator or phone, or build a sideload APK with
-  `./build-apk.ps1 -Install` once Release builds restore. Enter the settings on the app's
+  `./build-apk.ps1 -Install` when packaging and device deployment are intended. Enter the settings on the app's
   **Settings** tab.
 
 ## System Context
@@ -113,9 +117,9 @@ applies the same tutor definition and calls the same learner tools as the chat p
 
 | Layer | Subject-specific? | Where it is defined |
 | --- | --- | --- |
-| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
-| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
-| Chat, voice notes and live voice | No | Signal through [signalizr](https://github.com/f2calv/signalizr); speech through [`IVoiceTranscriptionService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.2.3/src/CasCap.Api.Voice/Abstractions/IVoiceTranscriptionService.cs) and [`IVoiceSynthesisService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.2.3/src/CasCap.Api.Voice/Abstractions/IVoiceSynthesisService.cs); the live voice client |
+| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
+| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
+| Chat, voice notes and live voice | No | Signal through [signalizr](https://github.com/f2calv/signalizr); speech through [`IVoiceTranscriptionService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceTranscriptionService.cs) and [`IVoiceSynthesisService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceSynthesisService.cs); the live voice client |
 | Learner-progress tools | Language learning today | [`TutorMcpQueryService`](src/CasCap.App.Server/Services/TutorMcpQueryService.cs) over [`ILearnerStore`](src/CasCap.App.Server/Abstractions/ILearnerStore.cs): CEFR levels, spaced-repetition terms and mistakes |
 
 Spaced repetition and mistake tracking suit any subject with facts to recall, such as a second
