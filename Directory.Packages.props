@@ -10,7 +10,7 @@
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.92.0" />
     <PackageVersion Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.92.0" />
-    <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.120" />
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="11.0.10" />
     <PackageVersion Include="CasCap.AgentRuntime.Client" Version="1.5.0" />
     <PackageVersion Include="CasCap.Api.Azure.Auth" Version="2.0.0" />
     <PackageVersion Include="CasCap.Comms.AI" Version="1.2.0" />
