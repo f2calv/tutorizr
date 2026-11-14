@@ -12,6 +12,12 @@ Everything below is specific to this repository.
 
 ## Repository Role
 
+- Use the .NET 11 SDK selected in `global.json` and C# 15. The server and its application-only
+  tests remain single-targeted on .NET 11.
+- Keep the voice client on `net11.0-android` with minimum API 29, application ID
+  `io.github.f2calv.tutorizr` and MAUI `11.0.10`. Add the unpackaged
+  `net11.0-windows10.0.19041.0` target only on Windows for development. Keep its existing
+  permissions and device-entered configuration; never package sign-in or runtime settings.
 - tutorizr is a subject-agnostic tutor on the Agentizr agent runtime; the German language tutor is
   only the first example. Keep subject-specific wording out of the host, channels, voice path and
   documentation; only the learner tool set may model a subject family, and it says so explicitly.

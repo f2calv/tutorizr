@@ -1,6 +1,6 @@
 # CasCap.App.Server
 
-The .NET 10 ASP.NET Core host for tutorizr, the subject-agnostic tutor on the
+The .NET 11 ASP.NET Core host for tutorizr, the subject-agnostic tutor on the
 [Agentizr agent runtime](https://github.com/f2calv/agentizr). It runs Signal communications,
 learner-progress MCP tools, or both, against external Redis and Agentizr services. The subject a
 tutor teaches comes from its Agentizr agent definition; this host contains no teaching behaviour.
@@ -13,7 +13,7 @@ with Redis and without Key Vault or Signal. For full chat, set
 
 - A Signal gateway's REST/gRPC addresses, subscriber name and exact chat/monitor group names.
 - An accessible Agentizr runtime with the selected agent definition, session and execution identity.
-  The Comms pipeline calls it through [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs).
+  The Comms pipeline calls it through [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs).
 - A runtime MCP connection to this host, with matching Basic credentials and explicit permission
   for the learner-writing tools.
 
@@ -67,7 +67,7 @@ The store accepts cancellation tokens but its Redis calls do not pass them throu
 read-modify-write operations, not concurrent-update-safe transactions across the entire tool call;
 retrying a non-idempotent tool can record another review or mistake.
 
-When Comms is enabled, [`MessagingMcpQueryService`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/Services/MessagingMcpQueryService.cs)
+When Comms is enabled, [`MessagingMcpQueryService`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/Services/MessagingMcpQueryService.cs)
 adds `create_poll`, `close_poll` and `get_poll_status`. Poll state is process-local and lost on restart.
 Tool annotations are metadata, not authorization: this host does not restrict write tools per client.
 The Agentizr runtime owns its tool allowlist and execution policy.
@@ -97,16 +97,16 @@ in place of `:`.
 | `CasCap:TutorConfig` | [`TutorConfig`](Models/_TutorConfig.cs): target `B1`, four Redis keys, `MaxMistakes=500` (1–100,000); used by Mcp |
 | `CasCap:ApiAuthConfig` | [`ApiAuthConfig`](https://github.com/f2calv/CasCap.Common/blob/main/src/CasCap.Common.Abstractions/Models/_ApiAuthConfig.cs): MCP Basic credentials |
 | `CasCap:CachingConfig` | Redis connection required even in MCP-only mode |
-| `CasCap:CommsConfig` | [`CommsConfig`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Models/_CommsConfig.cs): groups, agent/session selection, communications stream and monitor behavior |
+| `CasCap:CommsConfig` | [`CommsConfig`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Models/_CommsConfig.cs): groups, agent/session selection, communications stream and monitor behavior |
 | `CasCap:SignalizrClientConfig` | [`SignalizrClientConfig`](https://github.com/f2calv/signalizr/blob/main/src/CasCap.Signalizr.Client/Models/_SignalizrClientConfig.cs): gateway REST/gRPC addresses and subscriber |
-| `CasCap:AgentRuntimeClientOptions` | [`AgentRuntimeClientOptions`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Models/_AgentRuntimeClientOptions.cs): runtime address and request timeout |
-| `CasCap:AgentRuntimeAzureAuthConfig` | [`AgentRuntimeAzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/2.0.0/src/CasCap.Api.Azure.Auth/Models/_AgentRuntimeAzureAuthConfig.cs): optional Entra authentication for runtime calls |
+| `CasCap:AgentRuntimeClientOptions` | [`AgentRuntimeClientOptions`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Models/_AgentRuntimeClientOptions.cs): runtime address and request timeout |
+| `CasCap:AgentRuntimeAzureAuthConfig` | [`AgentRuntimeAzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/2.1.0/src/CasCap.Api.Azure.Auth/Models/_AgentRuntimeAzureAuthConfig.cs): optional Entra authentication for runtime calls |
 | `CasCap:SpeechToTextConfig`, `CasCap:TextToSpeechConfig` | [`SpeechToTextConfig`](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/Models/_SpeechToTextConfig.cs), [`TextToSpeechConfig`](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/Models/_TextToSpeechConfig.cs): disabled by default |
 
 Do not reuse learner Redis keys across independent deployments. See the
-[Comms guide](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/README.md)
+[Comms guide](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/README.md)
 for group matching, duplicate suppression and queue behavior, the
-[AI responder guide](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md)
+[AI responder guide](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/README.md)
 for chat commands/session behavior, and the
 [voice guide](https://github.com/f2calv/CasCap.Api.Voice/blob/main/src/CasCap.Api.Voice/README.md)
 for backend requirements and limits.
@@ -147,7 +147,7 @@ identity, a deployed agent definition or speech backends:
 
 ## Development
 
-This executable targets `net10.0` and is not a NuGet package. Debug/non-Release references use
+This executable targets `net11.0` and is not a NuGet package. Debug/non-Release references use
 adjacent `CasCap.Common`, `CasCap.Api.Azure` and `signalizr` projects; their dependency graph also
 requires adjacent `CasCap.Api.Voice` and `agentizr` checkouts. Keep those repositories at compatible
 revisions. The Debug solution includes those sources.
@@ -155,7 +155,7 @@ revisions. The Debug solution includes those sources.
 Release references pin the published shared hosting, caching, configuration, Azure authentication
 and Comms AI packages, so the Release build and the root Dockerfile need no adjacent checkouts.
 
-The direct MCP package is `ModelContextProtocol.AspNetCore` `2.3.1`; other package versions are
+The direct MCP package is `ModelContextProtocol.AspNetCore` `2.4.0`; other package versions are
 centralized in [Directory.Packages.props](../../Directory.Packages.props). See the
 [test project](../CasCap.App.Server.Tests/README.md) for offline checks and their limits.
 
@@ -166,10 +166,10 @@ the internal packages; the MCP SDK remains a package in both configurations.
 
 ```mermaid
 graph LR
-    Host[CasCap.App.Server, net10.0] --> Azure[CasCap.Api.Azure.Auth 2.0.0]
-    Host --> Comms[CasCap.Comms.AI 1.2.0]
-    Host --> Cache[CasCap.Common.Caching 5.1.0]
-    Host --> Config[CasCap.Common.Configuration 5.1.0]
-    Host --> Hosting[CasCap.Common.Hosting.AspNetCore 5.1.0]
-    Host --> MCP[ModelContextProtocol.AspNetCore 2.3.1]
+    Host[CasCap.App.Server, net11.0] --> Azure[CasCap.Api.Azure.Auth 2.1.0]
+    Host --> Comms[CasCap.Comms.AI 1.3.0]
+    Host --> Cache[CasCap.Common.Caching 5.2.0]
+    Host --> Config[CasCap.Common.Configuration 5.2.0]
+    Host --> Hosting[CasCap.Common.Hosting.AspNetCore 5.2.0]
+    Host --> MCP[ModelContextProtocol.AspNetCore 2.4.0]
 ```
