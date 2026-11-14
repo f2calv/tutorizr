@@ -19,6 +19,6 @@
     <PackageVersion Include="CasCap.Common.Hosting.AspNetCore" Version="5.1.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.3.1" />
-    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 </Project>
