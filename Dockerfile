@@ -73,7 +73,7 @@ EOF
 # The full image is required because the voice pipeline converts audio with ffmpeg, which a
 # chiseled image cannot install.
 # ------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 
 # -- Runtime dependencies ------------------------------------------------------
