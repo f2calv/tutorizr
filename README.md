@@ -72,7 +72,7 @@ MAUI Controls dependency is `11.0.10`; Microsoft Extensions dependencies use `11
 
 The voice client needs a runtime that brokers realtime calls and a public client registration, as
 described in the [authentication guide](docs/authentication.md#voice-client-sign-in). Release builds
-use the published `CasCap.AgentRuntime.Client` `1.6.0`, including realtime calls; Debug builds use
+use the published `CasCap.AgentRuntime.Client` `1.7.0`, including realtime conversation continuity; Debug builds use
 an adjacent Agentizr checkout.
 
 - **Windows:** set the settings in user secrets, then start the `Windows Machine` profile.
@@ -119,8 +119,8 @@ recovery, screen changes and explicit resumption.
 
 | Layer | Subject-specific? | Where it is defined |
 | --- | --- | --- |
-| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
-| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
+| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
+| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
 | Chat, voice notes and live voice | No | Signal through [signalizr](https://github.com/f2calv/signalizr); speech through [`IVoiceTranscriptionService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceTranscriptionService.cs) and [`IVoiceSynthesisService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceSynthesisService.cs); the live voice client |
 | Learner-progress tools | Language learning today | [`TutorMcpQueryService`](src/CasCap.App.Server/Services/TutorMcpQueryService.cs) over [`ILearnerStore`](src/CasCap.App.Server/Abstractions/ILearnerStore.cs): CEFR levels, spaced-repetition terms and mistakes |
 

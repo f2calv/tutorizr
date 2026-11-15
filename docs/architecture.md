@@ -3,7 +3,7 @@
 This drilldown opens the tutorizr host from the [System Context](../README.md#system-context) into its
 containers and components, then follows one learner turn and the spaced-repetition lifecycle.
 Teaching behaviour, persona and subject live in the tutor's agent definition in the
-[Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.6.0/docs/architecture.md), not in
+[Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.7.0/docs/architecture.md), not in
 this host, so the same containers serve any subject; the German tutor is only the first example.
 
 ## Containers
@@ -89,7 +89,7 @@ package.
 | Learner tools | Validates and bounds tool input, returns structured learner results | `Services/TutorMcpQueryService.cs`, `Models/` | Seven `[McpServerTool]` methods | `ILearnerStore`, Vocabulary schedule, `TimeProvider` |
 | Vocabulary schedule | Normalizes terms and computes Leitner review transitions | `Services/VocabularySchedule.cs` | `CreateNew`, `Review`, `Normalise` | None |
 | Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
-| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
+| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
 | Voice call page | Signs in before media starts, manages foreground keep-awake and stop/resume, exchanges SDP and displays transient transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs`, `TutorApp.xaml.cs` | New, Resume, Mute and End | Agent Runtime realtime call methods, `MsalAccessTokenProvider`, window lifecycle and MAUI `DeviceDisplay` |
 | Call media | Opens the microphone, plays tutor audio, forwards transcripts and allows twenty seconds for a transient disconnect to recover | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | Platform microphone permission and WebRTC |
@@ -161,10 +161,9 @@ Knowledge-enabled calls do **not** support retention or Resume: replaying previo
 answers could bypass evidence expiry or revocation. They remain ordinary non-retained calls with
 the switch off. Voice context also stays separate from text-session history.
 
-This feature requires the matching Agentizr contracts, client and server changes before rollout.
-Debug uses the adjacent runtime checkout; the Release package pin must be advanced through the
-normal release train before producing a feature APK. Existing released servers cannot provide
-conversation continuity.
+Conversation continuity requires Agentizr server `1.7.0` or later. Release builds use the
+published `1.7.0` client and contracts; Debug uses the adjacent runtime checkout. Building the APK
+does not upgrade a deployed server. Leave retention and resume disabled against older servers.
 
 ### Verification
 
