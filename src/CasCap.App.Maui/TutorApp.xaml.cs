@@ -16,8 +16,14 @@ public sealed partial class TutorApp : Application
     }
 
     /// <inheritdoc/>
-    protected override Window CreateWindow(IActivationState? activationState) =>
-        new(new AppShell(
-            _serviceProvider.GetRequiredService<ConversationPage>(),
-            _serviceProvider.GetService<SettingsPage>()));
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        var conversation = _serviceProvider.GetRequiredService<ConversationPage>();
+        var window = new Window(new AppShell(conversation, _serviceProvider.GetService<SettingsPage>()));
+        window.Activated += (_, _) => conversation.SetForeground(true);
+        window.Deactivated += (_, _) => conversation.SetForeground(false);
+        window.Stopped += async (_, _) => await conversation.SuspendAsync();
+        window.Destroying += async (_, _) => await conversation.SuspendAsync();
+        return window;
+    }
 }

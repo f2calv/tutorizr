@@ -25,7 +25,7 @@ repository ships no tutor definition, model, word lists or exam material.
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
 | [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 15 methods, 22 source-declared cases |
-| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI app for Android, with a Windows development target; Start, Mute and End controls, WebRTC in a hosted web view, learner sign-in with MSAL | Debug solution only; proof of concept |
+| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI on Android and Windows; New, optional Resume, Mute and End, foreground keep-awake and bounded WebRTC recovery | Resume requires matching runtime changes; see [voice lifecycle](docs/architecture.md#voice-call-lifecycle) |
 | [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
 ## Run the Learner Tools Locally
@@ -110,8 +110,10 @@ runtime agent definition/session and runtime authentication where enforced. Run 
 subscriber for the group, with non-overlapping rollouts. When both features are enabled, the host
 also exposes the shared poll tools; MCP-only mode exposes just the seven learner tools.
 
-The live voice client sends only its WebRTC offer to Agentizr's brokered realtime calls; the runtime
-applies the same tutor definition and calls the same learner tools as the chat path.
+The live voice client sends its WebRTC offer and optional voice-conversation reference to Agentizr's
+brokered realtime calls; the runtime applies the tutor definition and calls the same learner tools
+as the chat path. The [voice lifecycle](docs/architecture.md#voice-call-lifecycle) explains connection
+recovery, screen changes and explicit resumption.
 
 ## Subjects and the Example Tutor
 
@@ -142,7 +144,10 @@ The separate communications pipeline can disclose content to the operator's moni
 `MonitorContentEnabled` or `EchoTranscriptToDebugChat` is enabled; both default to `false`.
 
 The live voice client streams microphone audio to Azure OpenAI only while a session is active and
-shows transcripts transiently. It neither logs nor stores audio or transcripts.
+shows transcripts transiently. It neither logs nor stores audio or transcripts on the device.
+Optional Resume retains bounded conversation text in Agentizr for 24 hours, with caller isolation;
+it stores only an opaque reference on the device. Retention is off by default and unavailable for
+knowledge-enabled calls. See the [retention boundaries](docs/architecture.md#optional-conversation-continuity).
 
 ## License
 

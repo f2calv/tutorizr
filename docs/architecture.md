@@ -91,8 +91,92 @@ package.
 | Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
 | Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
-| Voice call page | Signs the learner in, exchanges the WebRTC offer and answer with Agentizr and shows call state and transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs` | Start, Mute and End | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs) realtime call methods, `MsalAccessTokenProvider` |
-| Call media | Opens the microphone with echo cancellation, plays tutor audio and forwards transcripts from the filtered event channel | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | WebView2 microphone permission |
+| Voice call page | Signs in before media starts, manages foreground keep-awake and stop/resume, exchanges SDP and displays transient transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs`, `TutorApp.xaml.cs` | New, Resume, Mute and End | Agent Runtime realtime call methods, `MsalAccessTokenProvider`, window lifecycle and MAUI `DeviceDisplay` |
+| Call media | Opens the microphone, plays tutor audio, forwards transcripts and allows twenty seconds for a transient disconnect to recover | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | Platform microphone permission and WebRTC |
+
+## Voice Call Lifecycle
+
+Foreground calls keep the screen awake without changing the device timeout setting. Settings-tab
+navigation preserves the call; actually backgrounding or manually locking the app ends media and
+requires an explicit New or Resume action on return, never an automatic microphone restart.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Disconnected
+    Disconnected --> Connecting: New or optional Resume
+    Connecting --> Active: sign in, open microphone, exchange SDP
+    Connecting --> Error: permission, sign-in, provider or setup timeout
+    Connecting --> Disconnecting: End or app stopped after sign-in
+    Active --> Active: Tutor or Settings tab, Mute or Unmute
+    Active --> Reconnecting: WebRTC disconnected
+    Reconnecting --> Active: same peer recovers within 20 seconds
+    Reconnecting --> Disconnecting: 20 seconds elapsed or peer failed
+    Active --> Disconnecting: End, peer failed or app stopped
+    Disconnecting --> Disconnected: release microphone and report call summary
+    Disconnecting --> Suspended: background or manual lock
+    Suspended --> Connecting: foreground, then explicit New or Resume
+    Error --> Connecting: explicit New or Resume
+    Disconnected --> Connecting: explicit New or Resume
+```
+
+Keep-awake applies while connecting after sign-in, active or reconnecting, and only while the app
+window is foregrounded. It is released immediately on end, error, deactivation or suspension.
+It prevents automatic screen-off, not the power button, operating-system policy or process death.
+Interactive sign-in deliberately opens the system browser before media capture, so that expected
+background transition does not cancel sign-in. Switching tabs does not call hang-up.
+
+| Event | Behaviour |
+| --- | --- |
+| New | Creates a new model conversation; the retention switch is off by default |
+| Resume | Opens a new WebRTC connection with the last retained voice context, not a continuation of an old audio socket |
+| Temporary disconnect | Displays Reconnecting and keeps the existing peer for up to 20 seconds; repeated disconnect notifications do not restart the deadline |
+| Recovery within the deadline | Returns to Listening; it neither creates a call nor replays history |
+| Terminal failure or elapsed deadline | Ends the runtime call, releases media, reports the lost connection and enables New or Resume |
+| End during setup | Cancels setup, waits for it to settle and ends any call created during the race |
+| App stopped or manually locked | Releases keep-awake, closes media, requests runtime hang-up and leaves an explicit resume opportunity |
+| Reactivation | Does not reopen the microphone; the learner presses Resume or New |
+| Settings tab | Does not end the call; updated connection settings apply to a subsequent call |
+| App killed | No client shutdown callback is guaranteed; the runtime's existing call ceiling/control-loss policy still applies |
+
+Hang-up requests have a ten-second client deadline. If the network is unavailable, the UI reports
+that the connection was lost; closing local media does not prove that the server received the
+request. Provider/control loss or the runtime's existing maximum duration remains the fallback.
+
+### Optional Conversation Continuity
+
+The retention switch opts into server-side voice text retention. Agentizr stores at most 40
+utterances and 32,768 characters for 24 hours after the last retained utterance or interruption.
+No audio or raw tool outputs are retained; interrupted assistant utterances are omitted rather
+than replaying words the learner may not have heard. This is bounded conversational continuity,
+not lossless audio replay or an unlimited transcript archive.
+
+The device stores only an opaque conversation reference scoped to the endpoint and configured
+tutor profile, so Resume can survive an app restart. The server independently checks the validated
+tenant, issuer and user identity, active definition and expiry. A missing, foreign, busy, expired
+or definition-incompatible conversation is an explicit conflict, never a silently fresh session.
+New replaces the device's last reference after successful setup; older server projections expire
+normally. The local transcript display remains transient and is not restored from the server.
+
+Knowledge-enabled calls do **not** support retention or Resume: replaying previous grounded
+answers could bypass evidence expiry or revocation. They remain ordinary non-retained calls with
+the switch off. Voice context also stays separate from text-session history.
+
+This feature requires the matching Agentizr contracts, client and server changes before rollout.
+Debug uses the adjacent runtime checkout; the Release package pin must be advanced through the
+normal release train before producing a feature APK. Existing released servers cannot provide
+conversation continuity.
+
+### Verification
+
+`node --test tests/call-media.test.cjs` exercises the exact twenty-second boundary, repeated
+disconnects, recovery, terminal failure, stale callbacks, hang-up cleanup and late microphone
+permission completion without a device or Azure. Agentizr's focused tests cover bounded replay,
+provider acceptance, durable PostgreSQL state, ownership and expiry.
+
+Device acceptance still needs a real call: leave it idle beyond the device timeout, switch between
+Tutor and Settings, manually lock/unlock, recover a brief network loss, exceed twenty seconds and
+resume after restarting the app. No automated test claims to prove Android vendor power management
+or live model recall.
 
 ## Runtime Scenarios
 

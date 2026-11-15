@@ -11,6 +11,9 @@
         let peer = null;
         let microphone = null;
         let meter = null;
+        let reconnectTimer = null;
+        const reconnectGraceMilliseconds = 20_000;
+        let mediaGeneration = 0;
 
         function notify(message) {
             window.HybridWebView.SendRawMessage(JSON.stringify(message));
@@ -66,32 +69,66 @@
         // Returns the SDP offer, or null when the microphone or peer connection cannot start.
         async function createOffer() {
             hangUp();
+            const generation = mediaGeneration;
             try {
-                microphone = await navigator.mediaDevices.getUserMedia({
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
                 });
-                peer = new RTCPeerConnection();
-                peer.ontrack = event => { document.getElementById('remote').srcObject = event.streams[0]; };
-                peer.onconnectionstatechange = () => {
-                    if (peer && (peer.connectionState === 'failed' || peer.connectionState === 'disconnected'))
+                if (generation !== mediaGeneration) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return null;
+                }
+                microphone = stream;
+                const connection = new RTCPeerConnection();
+                peer = connection;
+                connection.ontrack = event => {
+                    if (peer === connection)
+                        document.getElementById('remote').srcObject = event.streams[0];
+                };
+                connection.onconnectionstatechange = () => {
+                    if (peer !== connection)
+                        return;
+                    if (connection.connectionState === 'disconnected') {
+                        if (reconnectTimer !== null)
+                            return;
+                        notify({ type: 'state', value: 'reconnecting' });
+                        reconnectTimer = setTimeout(() => {
+                            reconnectTimer = null;
+                            if (peer === connection && connection.connectionState !== 'connected')
+                                notify({ type: 'state', value: 'failed' });
+                        }, reconnectGraceMilliseconds);
+                    } else if (connection.connectionState === 'connected') {
+                        clearTimeout(reconnectTimer);
+                        reconnectTimer = null;
+                        notify({ type: 'state', value: 'connected' });
+                    } else if (connection.connectionState === 'failed') {
+                        clearTimeout(reconnectTimer);
+                        reconnectTimer = null;
                         notify({ type: 'state', value: 'failed' });
+                    }
                 };
                 microphone.getTracks().forEach(track => peer.addTrack(track, microphone));
                 meter = startMeter(microphone);
-                peer.createDataChannel('oai-events').onmessage = message => onProviderEvent(JSON.parse(message.data));
-                await peer.setLocalDescription(await peer.createOffer());
-                return peer.localDescription.sdp;
+                peer.createDataChannel('oai-events').onmessage = message => {
+                    if (peer === connection)
+                        onProviderEvent(JSON.parse(message.data));
+                };
+                await connection.setLocalDescription(await connection.createOffer());
+                return peer === connection ? connection.localDescription.sdp : null;
             } catch (error) {
-                console.error(error);
-                hangUp();
+                if (generation === mediaGeneration) {
+                    console.error(error);
+                    hangUp();
+                }
                 return null;
             }
         }
 
         async function acceptAnswer(sdp) {
+            const connection = peer;
             try {
-                await peer.setRemoteDescription({ type: 'answer', sdp: sdp });
-                return true;
+                await connection.setRemoteDescription({ type: 'answer', sdp: sdp });
+                return peer === connection;
             } catch (error) {
                 console.error(error);
                 return false;
@@ -104,12 +141,17 @@
         }
 
         function hangUp() {
+            mediaGeneration++;
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
             meter?.stop();
-            peer?.close();
+            const connection = peer;
+            peer = null;
+            connection?.close();
             microphone?.getTracks().forEach(track => track.stop());
             meter = null;
-            peer = null;
             microphone = null;
+            document.getElementById('remote').srcObject = null;
             return true;
         }
     </script>

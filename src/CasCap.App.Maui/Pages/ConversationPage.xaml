@@ -6,7 +6,7 @@
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Padding="24" RowSpacing="16">
         <Label Text="Live tutor" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
         <Label Grid.Row="1" Style="{StaticResource IntroLabelStyle}"
-               Text="While a call is active your voice is streamed to Azure OpenAI through a call brokered by the Agentizr runtime. This app does not store audio or transcripts." />
+               Text="Voice streams to Azure OpenAI through Agentizr. The screen stays awake during foreground calls. Optional Resume retains bounded conversation text on the server for 24 hours, never audio or device transcripts." />
         <VerticalStackLayout Grid.Row="2" Spacing="4">
             <Label x:Name="StateLabel" Style="{StaticResource SectionTitleLabelStyle}" />
             <HorizontalStackLayout x:Name="MicrophoneIndicator" Spacing="8" IsVisible="False">
@@ -14,15 +14,22 @@
                 <Label x:Name="MicrophoneLabel" VerticalOptions="Center" />
             </HorizontalStackLayout>
             <Label x:Name="DetailLabel" Style="{StaticResource IntroLabelStyle}" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <Switch x:Name="RememberConversationSwitch" />
+                <Label Grid.Column="1" Text="Allow 24-hour conversation resume (not available with knowledge tools)"
+                       VerticalOptions="Center" />
+            </Grid>
         </VerticalStackLayout>
-        <HorizontalStackLayout Grid.Row="3" Spacing="12">
-            <Button x:Name="StartButton" Text="Start" Clicked="OnStartClicked"
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+            <Button x:Name="StartButton" Text="New" Clicked="OnStartClicked"
                     SemanticProperties.Hint="Signs you in if needed and starts a live call with the tutor" />
-            <Button x:Name="MuteButton" Text="Mute" Clicked="OnMuteClicked"
+            <Button Grid.Column="1" x:Name="ResumeButton" Text="Resume" Clicked="OnResumeClicked"
+                    SemanticProperties.Hint="Starts a new audio connection with your last retained conversation" />
+            <Button Grid.Column="2" x:Name="MuteButton" Text="Mute" Clicked="OnMuteClicked"
                     SemanticProperties.Hint="Stops or resumes sending your microphone" />
-            <Button x:Name="EndButton" Text="End" Clicked="OnEndClicked"
+            <Button Grid.Column="3" x:Name="EndButton" Text="End" Clicked="OnEndClicked"
                     SemanticProperties.Hint="Ends the call and releases the microphone" />
-        </HorizontalStackLayout>
+        </Grid>
         <ScrollView Grid.Row="4" x:Name="TranscriptScroll">
             <Label x:Name="TranscriptLabel" />
         </ScrollView>
