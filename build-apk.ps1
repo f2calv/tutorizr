@@ -12,6 +12,7 @@ $implementation = $scripts | Where-Object { Test-Path -LiteralPath $_ -PathType 
 if (-not $implementation) { throw "Build-Apk.ps1 was not found. Link the central skills folder or clone the central repository beside this repository." }
 # The sideload keystore is shared with other sideloaded apps and keeps the names it was created under.
 & $implementation -RepositoryRoot $PSScriptRoot -Project 'src/CasCap.App.Maui/CasCap.App.Maui.csproj' `
+    -TargetFramework 'net11.0-android' `
     -KeyAlias 'dcim-sideload' -KeyVaultKeystoreSecret 'dcim-android-sideload-keystore' `
     -KeyVaultPasswordSecret 'dcim-android-sideload-keystore-password' @args
 exit $LASTEXITCODE

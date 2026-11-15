@@ -3,7 +3,7 @@
 This drilldown opens the tutorizr host from the [System Context](../README.md#system-context) into its
 containers and components, then follows one learner turn and the spaced-repetition lifecycle.
 Teaching behaviour, persona and subject live in the tutor's agent definition in the
-[Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.4.0/docs/architecture.md), not in
+[Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.6.0/docs/architecture.md), not in
 this host, so the same containers serve any subject; the German tutor is only the first example.
 
 ## Containers
@@ -47,7 +47,7 @@ credentials.
 ## Host Components
 
 The host owns the learner tools and their store. The communications pipeline and poll tools come
-from the [`CasCap.Comms.AI` package](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms.AI/README.md)
+from the [`CasCap.Comms.AI` package](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/README.md)
 published by signalizr; this repository only registers them. `AppHost` is the composition root that
 wires the components below by feature.
 
@@ -89,9 +89,9 @@ package.
 | Learner tools | Validates and bounds tool input, returns structured learner results | `Services/TutorMcpQueryService.cs`, `Models/` | Seven `[McpServerTool]` methods | `ILearnerStore`, Vocabulary schedule, `TimeProvider` |
 | Vocabulary schedule | Normalizes terms and computes Leitner review transitions | `Services/VocabularySchedule.cs` | `CreateNew`, `Review`, `Normalise` | None |
 | Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
-| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.2.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
+| Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
-| Voice call page | Signs the learner in, exchanges the WebRTC offer and answer with Agentizr and shows call state and transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs` | Start, Mute and End | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.4.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs) realtime call methods, `MsalAccessTokenProvider` |
+| Voice call page | Signs the learner in, exchanges the WebRTC offer and answer with Agentizr and shows call state and transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs` | Start, Mute and End | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs) realtime call methods, `MsalAccessTokenProvider` |
 | Call media | Opens the microphone with echo cancellation, plays tutor audio and forwards transcripts from the filtered event channel | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | WebView2 microphone permission |
 
 ## Runtime Scenarios
@@ -151,6 +151,11 @@ stateDiagram-v2
 The [CI workflow](../.github/workflows/ci.yml) validates pull requests without publishing images
 or charts. On the default branch it publishes both artifacts before creating the immutable release.
 Publication does not install the chart or deploy the host.
+
+Separate MAUI jobs publish Android and Windows packages. Same-repository human pull requests also
+build and sign a sideload APK with the configured keystore; these are packaging runs, not compile-only
+validation. The shared Android workflow skips Dependabot entirely, including the unsigned-bundle
+job. Packaging and signing permission must therefore be established before triggering this workflow.
 
 ```mermaid
 flowchart TD

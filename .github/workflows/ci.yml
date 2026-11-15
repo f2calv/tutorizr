@@ -88,6 +88,8 @@ jobs:
       contents: read
     with:
       project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      dotnet-version: 11.0.x
+      target-framework: net11.0-android
       app-display-version: ${{ format('{0}.{1}.{2}', needs.versioning.outputs.major, needs.versioning.outputs.minor, needs.versioning.outputs.patch) }}
       app-version-code: ${{ github.run_number }}
 
@@ -99,6 +101,8 @@ jobs:
       contents: read
     with:
       project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      dotnet-version: 11.0.x
+      target-framework: net11.0-windows10.0.19041.0
       app-display-version: ${{ format('{0}.{1}.{2}', needs.versioning.outputs.major, needs.versioning.outputs.minor, needs.versioning.outputs.patch) }}
       app-version-code: ${{ github.run_number }}
 
@@ -114,6 +118,8 @@ jobs:
       contents: read
     with:
       project: src/CasCap.App.Maui/CasCap.App.Maui.csproj
+      dotnet-version: 11.0.x
+      target-framework: net11.0-android
       package-format: apk
       sign: true
       version-code-from-clock: true

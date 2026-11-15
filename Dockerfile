@@ -11,14 +11,14 @@
 # Pinned to $BUILDPLATFORM and CROSS-COMPILES to $TARGETPLATFORM; emulating the
 # target under QEMU instead is often an order of magnitude slower.
 # ------------------------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0-resolute AS build
 WORKDIR /repo
 COPY ["Directory.Build.props", "Directory.Packages.props", "global.json", "./"]
 
 ARG WORKLOAD=CasCap.App.Server
 ARG PROJECT=src/${WORKLOAD}/${WORKLOAD}.csproj
 ARG CONFIGURATION=Release
-ARG TARGET_FRAMEWORK=net10.0
+ARG TARGET_FRAMEWORK=net11.0
 ARG VERSION=0.0.0-local
 ARG GIT_REPOSITORY=n/a
 ARG GIT_BRANCH=n/a
@@ -73,7 +73,7 @@ EOF
 # The full image is required because the voice pipeline converts audio with ffmpeg, which a
 # chiseled image cannot install.
 # ------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute AS runtime
 WORKDIR /app
 
 # -- Runtime dependencies ------------------------------------------------------
