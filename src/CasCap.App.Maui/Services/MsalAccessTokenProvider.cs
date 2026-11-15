@@ -28,7 +28,7 @@ public sealed partial class MsalAccessTokenProvider
             .WithTenantId(config.Value.TenantId)
             .WithRedirectUri(RedirectUri)
             .Build();
-        _scopes = [config.Value.ApiScope!];
+        _scopes = config.Value.GetApiScopes();
         _cacheRegistration = new(() => RegisterPersistentCacheAsync(_application.UserTokenCache));
     }
 

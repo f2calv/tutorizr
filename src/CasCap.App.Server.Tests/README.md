@@ -13,9 +13,10 @@ application configuration and requires an isolated environment before execution.
 | [`VocabularyScheduleTests`](Tests/Unit/VocabularyScheduleTests.cs) | 4 | 9 | `Scheduling` |
 | [`TutorMcpQueryServiceTests`](Tests/Unit/TutorMcpQueryServiceTests.cs) | 8 | 10 | `Tools` |
 | [`TutorMcpToolAnnotationTests`](Tests/Unit/TutorMcpToolAnnotationTests.cs) | 2 | 2 | `Tools` |
-| **Total** | **15** | **22** | |
+| [`TutorClientConfigTests`](Tests/Unit/TutorClientConfigTests.cs) | 2 | 6 | `Authentication` |
+| **Total** | **17** | **28** | |
 
-These are source-declared counts, not execution results. Four theories expand through 11
+These are source-declared counts, not execution results. Six theories expand through 17
 `InlineData` rows; the other eleven methods are facts. There are no member/class data providers.
 
 ## Traits
@@ -23,6 +24,7 @@ These are source-declared counts, not execution results. Four theories expand th
 | Category | Covers |
 | --- | --- |
 | `Hosting` | Unexpected startup failures return a non-success process result |
+| `Authentication` | Device-entered single/multiple scope parsing, deduplication and missing-scope rejection |
 | `Scheduling` | Leitner box promotion, reset and term normalisation |
 | `Tools` | MCP tool behaviour against an in-memory store, and pinned tool hints |
 
@@ -57,6 +59,11 @@ selected invalid inputs and the seven learner-tool annotations.
 
 They do not validate Redis transactions, concurrent writes, HTTP Basic authentication, MCP transport,
 health endpoints, gateway delivery, runtime policy or speech providers.
+The project links the platform-neutral MAUI configuration source to verify scope handling without
+MAUI workloads or MSAL sign-in. It does not verify live tokens, consent or interactive authentication.
+Focused verification passed all six `TutorClientConfigTests` cases, with zero failures or skips.
+The MAUI Debug Android and Windows targets also built with zero warnings/errors. No sign-in,
+client installation or inference was performed.
 
 ## Layout
 
