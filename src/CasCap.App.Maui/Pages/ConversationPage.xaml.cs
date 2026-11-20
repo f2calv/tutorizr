@@ -217,13 +217,13 @@ public sealed partial class ConversationPage : ContentPage
     }
 
     // Android raises web view messages on a background thread; the page may only be updated from the main thread.
-    private void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
+    private async void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
     {
         if (e.Message is { } message)
-            Dispatcher.Dispatch(() => HandleCallViewMessage(message));
+            await Dispatcher.DispatchAsync(() => HandleCallViewMessageAsync(message));
     }
 
-    private async void HandleCallViewMessage(string json)
+    private async Task HandleCallViewMessageAsync(string json)
     {
         using var message = JsonDocument.Parse(json);
         var root = message.RootElement;
@@ -279,8 +279,10 @@ public sealed partial class ConversationPage : ContentPage
         await HangUpViewAsync();
         var summary = await ending;
         if (wasActive)
-            DetailLabel.Text = summary is null ? "The call connection was lost."
-                : (connectionLost ? "The call connection was lost. " : string.Empty) + Describe(summary);
+        {
+            var prefix = connectionLost ? "The call connection was lost. " : string.Empty;
+            DetailLabel.Text = summary is null ? "The call connection was lost." : prefix + Describe(summary);
+        }
         if (_state != TutorCallState.Error)
             SetState(TutorCallState.Disconnected);
     }
