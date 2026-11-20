@@ -17,6 +17,8 @@ public static partial class MauiProgram
             .Bind(builder.Configuration.GetSection(TutorClientConfig.ConfigurationSectionName))
             .ValidateDataAnnotations();
         builder.Services.AddSingleton<MsalAccessTokenProvider>();
+        builder.Services.AddTransient<Func<MsalAccessTokenProvider>>(services =>
+            services.GetRequiredService<MsalAccessTokenProvider>);
         builder.Services.AddTransient<BearerTokenHandler>();
         builder.Services.AddAgentRuntimeClient().AddHttpMessageHandler<BearerTokenHandler>();
         builder.Services.AddTransient<Func<IAgentRuntimeClient>>(services => services.GetRequiredService<IAgentRuntimeClient>);

@@ -15,9 +15,11 @@
             <Label Text="Application (client) ID" />
             <Entry x:Name="ClientIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
                    SemanticProperties.Description="Application (client) ID" />
-            <Label Text="Runtime API scope" />
+            <Label Text="Runtime API scopes" />
             <Entry x:Name="ApiScopeEntry" Placeholder="api://00000000-0000-0000-0000-000000000000/agent.realtime"
-                   Keyboard="Url" SemanticProperties.Description="Runtime API scope" />
+                   SemanticProperties.Description="Runtime API scopes, separated by spaces" />
+            <Label Style="{StaticResource IntroLabelStyle}"
+                   Text="Separate scopes with spaces. Ordinary calls need agent.realtime; knowledge-enabled calls also need the same API's agent.knowledge.search scope and consent." />
             <Label Text="Tutor agent name" />
             <Entry x:Name="AgentNameEntry" SemanticProperties.Description="Tutor agent name" />
             <Label Text="Runtime address" />

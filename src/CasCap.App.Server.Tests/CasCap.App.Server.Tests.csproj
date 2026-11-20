@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CasCap.App.Server\CasCap.App.Server.csproj" />
+    <Compile Include="..\CasCap.App.Maui\Models\_TutorClientConfig.cs" Link="Models\_TutorClientConfig.cs" />
   </ItemGroup>
 
   <!-- The server's gitignored Local tier holds private deployment settings; host tests stay credential-free. -->

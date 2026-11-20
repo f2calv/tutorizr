@@ -15,6 +15,15 @@ public enum TutorCallState
     /// <summary>Tutor audio is playing.</summary>
     Speaking,
 
+    /// <summary>The existing peer connection has up to twenty seconds to recover.</summary>
+    Reconnecting,
+
+    /// <summary>The call is releasing its microphone and runtime resources.</summary>
+    Disconnecting,
+
+    /// <summary>The app stopped and the call ended; the learner can resume on return.</summary>
+    Suspended,
+
     /// <summary>The call failed and has been closed.</summary>
     Error,
 }

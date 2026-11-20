@@ -25,7 +25,7 @@ repository ships no tutor definition, model, word lists or exam material.
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
 | [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 15 methods, 22 source-declared cases |
-| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI app for Android, with a Windows development target; Start, Mute and End controls, WebRTC in a hosted web view, learner sign-in with MSAL | Debug solution only; proof of concept |
+| [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI on Android and Windows; New, optional Resume, Mute and End, foreground keep-awake and bounded WebRTC recovery | Resume requires matching runtime changes; see [voice lifecycle](docs/architecture.md#voice-call-lifecycle) |
 | [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
 ## Run the Learner Tools Locally
@@ -72,7 +72,7 @@ MAUI Controls dependency is `11.0.10`; Microsoft Extensions dependencies use `11
 
 The voice client needs a runtime that brokers realtime calls and a public client registration, as
 described in the [authentication guide](docs/authentication.md#voice-client-sign-in). Release builds
-use the published `CasCap.AgentRuntime.Client` `1.6.0`, including realtime calls; Debug builds use
+use the published `CasCap.AgentRuntime.Client` `1.7.0`, including realtime conversation continuity; Debug builds use
 an adjacent Agentizr checkout.
 
 - **Windows:** set the settings in user secrets, then start the `Windows Machine` profile.
@@ -110,15 +110,17 @@ runtime agent definition/session and runtime authentication where enforced. Run 
 subscriber for the group, with non-overlapping rollouts. When both features are enabled, the host
 also exposes the shared poll tools; MCP-only mode exposes just the seven learner tools.
 
-The live voice client sends only its WebRTC offer to Agentizr's brokered realtime calls; the runtime
-applies the same tutor definition and calls the same learner tools as the chat path.
+The live voice client sends its WebRTC offer and optional voice-conversation reference to Agentizr's
+brokered realtime calls; the runtime applies the tutor definition and calls the same learner tools
+as the chat path. The [voice lifecycle](docs/architecture.md#voice-call-lifecycle) explains connection
+recovery, screen changes and explicit resumption.
 
 ## Subjects and the Example Tutor
 
 | Layer | Subject-specific? | Where it is defined |
 | --- | --- | --- |
-| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
-| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
+| Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
+| Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
 | Chat, voice notes and live voice | No | Signal through [signalizr](https://github.com/f2calv/signalizr); speech through [`IVoiceTranscriptionService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceTranscriptionService.cs) and [`IVoiceSynthesisService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceSynthesisService.cs); the live voice client |
 | Learner-progress tools | Language learning today | [`TutorMcpQueryService`](src/CasCap.App.Server/Services/TutorMcpQueryService.cs) over [`ILearnerStore`](src/CasCap.App.Server/Abstractions/ILearnerStore.cs): CEFR levels, spaced-repetition terms and mistakes |
 
@@ -142,7 +144,10 @@ The separate communications pipeline can disclose content to the operator's moni
 `MonitorContentEnabled` or `EchoTranscriptToDebugChat` is enabled; both default to `false`.
 
 The live voice client streams microphone audio to Azure OpenAI only while a session is active and
-shows transcripts transiently. It neither logs nor stores audio or transcripts.
+shows transcripts transiently. It neither logs nor stores audio or transcripts on the device.
+Optional Resume retains bounded conversation text in Agentizr for 24 hours, with caller isolation;
+it stores only an opaque reference on the device. Retention is off by default and unavailable for
+knowledge-enabled calls. See the [retention boundaries](docs/architecture.md#optional-conversation-continuity).
 
 ## License
 

@@ -1,6 +1,7 @@
 using CasCap.AgentRuntime.Contracts.V1;
 using Microsoft.Identity.Client;
 using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
 using System.Net;
 using System.Text.Json;
@@ -28,6 +29,11 @@ public sealed partial class ConversationPage : ContentPage
     private TutorCallState _state = TutorCallState.Disconnected;
     private bool _muted;
     private bool _hearing;
+    private bool _foreground = true;
+    private bool _authenticating;
+    private CancellationTokenSource? _connecting;
+    private Task? _starting;
+    private Task? _ending;
 
     /// <summary>Initializes a new instance of the <see cref="ConversationPage"/> class.</summary>
     /// <param name="callService">Starts and ends calls through the Agent Runtime.</param>
@@ -44,29 +50,101 @@ public sealed partial class ConversationPage : ContentPage
     }
 
     /// <inheritdoc/>
-    protected override async void OnDisappearing()
+    protected override void OnAppearing()
     {
-        base.OnDisappearing();
-        await EndCallAsync();
+        base.OnAppearing();
+        try
+        {
+            _callService.RestoreConversation();
+            Render();
+        }
+        catch (OptionsValidationException)
+        {
+            DetailLabel.Text = "Enter the tutor connection settings before starting a call.";
+        }
+    }
+
+    /// <summary>Updates the window's foreground status without treating tab navigation as a hang-up.</summary>
+    /// <param name="foreground">Whether this app window is active.</param>
+    public void SetForeground(bool foreground)
+    {
+        _foreground = foreground;
+        UpdateKeepAwake();
+    }
+
+    /// <summary>Ends media when the window stops; resumption always requires an explicit learner action.</summary>
+    public async Task SuspendAsync()
+    {
+        SetForeground(false);
+        // The system browser must be allowed to finish sign-in before the call opens its microphone.
+        if (!_authenticating && _state is TutorCallState.Connecting or TutorCallState.Listening
+            or TutorCallState.Speaking or TutorCallState.Reconnecting or TutorCallState.Disconnecting)
+        {
+            await EndCallAsync();
+            DetailLabel.Text += _callService.CanResume
+                ? " App is inactive. Press Resume when you return to continue your conversation."
+                : " App is inactive. Start a new call when you return.";
+            SetState(TutorCallState.Suspended);
+        }
     }
 
     private async void OnStartClicked(object? sender, EventArgs e)
+        => await BeginCallAsync(resume: false);
+
+    private async void OnResumeClicked(object? sender, EventArgs e)
+        => await BeginCallAsync(resume: true);
+
+    private async Task BeginCallAsync(bool resume)
+    {
+        if (_starting is { IsCompleted: false } || _ending is { IsCompleted: false })
+            return;
+        if (resume)
+            RememberConversationSwitch.IsToggled = true;
+        _starting = StartCallAsync(resume);
+        await _starting;
+    }
+
+    private async Task StartCallAsync(bool resume)
     {
         DetailLabel.Text = string.Empty;
-        _transcript.Clear();
-        TranscriptLabel.Text = string.Empty;
+        if (!resume)
+        {
+            _transcript.Clear();
+            TranscriptLabel.Text = string.Empty;
+        }
         _muted = false;
         SetState(TutorCallState.Connecting);
+        using var timeout = new CancellationTokenSource(ConnectTimeout);
+        _connecting = timeout;
         try
         {
-            using var timeout = new CancellationTokenSource(ConnectTimeout);
+            _authenticating = true;
+            UpdateKeepAwake();
+            try
+            {
+                await _callService.PrepareAsync(timeout.Token);
+            }
+            finally
+            {
+                _authenticating = false;
+                UpdateKeepAwake();
+            }
+            timeout.Token.ThrowIfCancellationRequested();
+            if (!_foreground)
+            {
+                DetailLabel.Text = "Return to the app and connect when you are ready.";
+                SetState(TutorCallState.Suspended);
+                return;
+            }
             if (await CallView.InvokeJavaScriptAsync("createOffer", CallPageJsonContext.Default.String)
                 .WaitAsync(MediaTimeout, timeout.Token) is not { } offer)
             {
                 await FailAsync(MediaFailureMessage);
                 return;
             }
-            var answer = await _callService.StartAsync(offer, timeout.Token);
+            var answer = await _callService.StartAsync(
+                offer, timeout.Token, resume, RememberConversationSwitch.IsToggled);
+            timeout.Token.ThrowIfCancellationRequested();
             if (answer is null)
             {
                 await HangUpViewAsync();
@@ -82,6 +160,7 @@ public sealed partial class ConversationPage : ContentPage
                 await FailAsync(MediaFailureMessage);
                 return;
             }
+            timeout.Token.ThrowIfCancellationRequested();
             SetState(TutorCallState.Listening);
         }
         catch (OptionsValidationException ex)
@@ -102,16 +181,24 @@ public sealed partial class ConversationPage : ContentPage
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Your account is not allowed to start tutor calls.",
                 HttpStatusCode.TooManyRequests => "The tutor is busy with other calls; please try again shortly.",
+                HttpStatusCode.Conflict => "Resume is unavailable: the conversation expired, belongs to another account, "
+                    + "is busy, its definition changed, or knowledge tools are enabled. Start New with retention off "
+                    + "for a non-retained call.",
                 _ => "Could not start the call through the Agent Runtime.",
             });
         }
         catch (OperationCanceledException)
         {
-            await FailAsync("Connecting took too long; please try again.");
+            if (_state != TutorCallState.Disconnecting)
+                await FailAsync("Connecting took too long; please try again.");
         }
         catch (TimeoutException)
         {
             await FailAsync(MediaFailureMessage);
+        }
+        finally
+        {
+            _connecting = null;
         }
     }
 
@@ -130,13 +217,13 @@ public sealed partial class ConversationPage : ContentPage
     }
 
     // Android raises web view messages on a background thread; the page may only be updated from the main thread.
-    private void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
+    private async void OnCallViewRawMessageReceived(object? sender, HybridWebViewRawMessageReceivedEventArgs e)
     {
         if (e.Message is { } message)
-            Dispatcher.Dispatch(() => HandleCallViewMessage(message));
+            await Dispatcher.DispatchAsync(() => HandleCallViewMessageAsync(message));
     }
 
-    private void HandleCallViewMessage(string json)
+    private async Task HandleCallViewMessageAsync(string json)
     {
         using var message = JsonDocument.Parse(json);
         var root = message.RootElement;
@@ -146,14 +233,19 @@ public sealed partial class ConversationPage : ContentPage
                 AddTranscript(root.GetProperty("speaker").GetString() == "tutor" ? "Tutor" : "You",
                     root.GetProperty("text").GetString() ?? string.Empty);
                 break;
-            case "microphone":
+            case "microphone" when _state is TutorCallState.Listening or TutorCallState.Speaking:
                 SetHearing(root.GetProperty("hearing").GetBoolean());
                 break;
-            case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking:
+            case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking
+                or TutorCallState.Reconnecting or TutorCallState.Connecting:
                 var value = root.GetProperty("value").GetString();
                 if (value == "failed")
-                    _ = EndCallAsync();
-                else
+                    await EndCallAsync(connectionLost: true);
+                else if (_state == TutorCallState.Connecting)
+                    break;
+                else if (value == "reconnecting")
+                    SetState(TutorCallState.Reconnecting);
+                else if (_state != TutorCallState.Reconnecting || value == "connected")
                     SetState(value == "speaking" ? TutorCallState.Speaking : TutorCallState.Listening);
                 break;
         }
@@ -166,14 +258,31 @@ public sealed partial class ConversationPage : ContentPage
     partial void AllowMicrophone(WebViewInitializedEventArgs e);
 
     // Also runs when media drops, so the runtime's summary explains a hang-up it made itself.
-    private async Task EndCallAsync()
+    private Task EndCallAsync(bool connectionLost = false)
     {
+        if (_ending is not { IsCompleted: false })
+            _ending = EndCallCoreAsync(connectionLost);
+        return _ending;
+    }
+
+    private async Task EndCallCoreAsync(bool connectionLost)
+    {
+        var wasActive = _state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting
+            or TutorCallState.Reconnecting;
+        SetState(TutorCallState.Disconnecting);
+        if (_connecting is { } connecting)
+            await connecting.CancelAsync();
+        if (_starting is { IsCompleted: false } starting)
+            await starting;
         // Ask the runtime first so it records the learner's request before the provider sees media close.
         var ending = _callService.EndAsync(CancellationToken.None);
         await HangUpViewAsync();
         var summary = await ending;
-        if (_state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting)
-            DetailLabel.Text = summary is null ? "The call connection was lost." : Describe(summary);
+        if (wasActive)
+        {
+            var prefix = connectionLost ? "The call connection was lost. " : string.Empty;
+            DetailLabel.Text = summary is null ? "The call connection was lost." : prefix + Describe(summary);
+        }
         if (_state != TutorCallState.Error)
             SetState(TutorCallState.Disconnected);
     }
@@ -194,6 +303,7 @@ public sealed partial class ConversationPage : ContentPage
 
     private async Task FailAsync(string message)
     {
+        UpdateKeepAwake(ending: true);
         await HangUpViewAsync();
         await _callService.EndAsync(CancellationToken.None);
         DetailLabel.Text = message;
@@ -206,7 +316,7 @@ public sealed partial class ConversationPage : ContentPage
         {
             await CallView.InvokeJavaScriptAsync("hangUp", CallPageJsonContext.Default.Boolean).WaitAsync(HangUpTimeout);
         }
-        catch (TimeoutException ex)
+        catch (Exception ex) when (ex is TimeoutException or ObjectDisposedException)
         {
             // Ending the runtime call matters more than confirming the web view released the microphone.
             _logger.LogWarning(ex, "{ClassName} web view did not confirm hang-up", nameof(ConversationPage));
@@ -225,10 +335,16 @@ public sealed partial class ConversationPage : ContentPage
     private void SetState(TutorCallState state)
     {
         _state = state;
+        UpdateKeepAwake();
         if (state is not (TutorCallState.Listening or TutorCallState.Speaking))
             SetHearing(false);
         Render();
     }
+
+    private void UpdateKeepAwake(bool ending = false) =>
+        DeviceDisplay.Current.KeepScreenOn = !ending && _foreground && !_authenticating
+            && _state is TutorCallState.Connecting or TutorCallState.Listening
+                or TutorCallState.Speaking or TutorCallState.Reconnecting;
 
     private void SetHearing(bool hearing)
     {
@@ -246,10 +362,12 @@ public sealed partial class ConversationPage : ContentPage
     {
         var active = _state is TutorCallState.Listening or TutorCallState.Speaking;
         StateLabel.Text = _muted && active ? $"{_state} (muted)" : _state.ToString();
-        StartButton.IsEnabled = _state is TutorCallState.Disconnected or TutorCallState.Error;
+        StartButton.IsEnabled = _state is TutorCallState.Disconnected or TutorCallState.Error or TutorCallState.Suspended;
+        ResumeButton.IsEnabled = StartButton.IsEnabled && _callService.CanResume;
+        RememberConversationSwitch.IsEnabled = StartButton.IsEnabled;
         MuteButton.IsEnabled = active;
         MuteButton.Text = _muted ? "Unmute" : "Mute";
-        EndButton.IsEnabled = active || _state == TutorCallState.Connecting;
+        EndButton.IsEnabled = active || _state is TutorCallState.Connecting or TutorCallState.Reconnecting;
         MicrophoneIndicator.IsVisible = active;
         MicrophoneLabel.Text = _muted ? "Microphone muted" : _hearing ? "Hearing you" : "Microphone on, quiet";
         SemanticProperties.SetDescription(MicrophoneIndicator, MicrophoneLabel.Text);

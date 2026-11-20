@@ -101,7 +101,7 @@ values is a secret, but they identify a directory and a registration, so keep th
 | --- | --- |
 | `TutorClientConfig:TenantId` | Directory of the public client registration |
 | `TutorClientConfig:ClientId` | Public client registration ID |
-| `TutorClientConfig:ApiScope` | Delegated scope, for example `api://00000000-0000-0000-0000-000000000000/agent.realtime` |
+| `TutorClientConfig:ApiScope` | Whitespace-separated delegated scopes for the same runtime API; existing single-scope settings remain valid |
 | `TutorClientConfig:AgentName` | Agent whose definition offers realtime calls |
 | `CasCap:AgentRuntimeClientOptions:BaseAddress` | Runtime base address, for example `https://runtime.example.com/` |
 
@@ -118,6 +118,20 @@ dotnet user-secrets --project src/CasCap.App.Maui set "CasCap:AgentRuntimeClient
 The public client registration needs a mobile and desktop platform with the `http://localhost` and
 `io.github.f2calv.tutorizr://auth` redirect URIs, the delegated `agent.realtime` permission on the
 runtime API, and its client ID added to the tutor tenant's caller list in the runtime.
+
+For knowledge-enabled voice calls, register and consent `agent.knowledge.search` first, then enter
+both fully qualified scopes in the existing scope setting:
+
+```text
+api://00000000-0000-0000-0000-000000000000/agent.realtime api://00000000-0000-0000-0000-000000000000/agent.knowledge.search
+```
+
+The client splits whitespace and removes duplicate entries before both silent and interactive
+MSAL requests. It requests one token containing both permissions, not two tokens.
+No extra scope is automatically added to ordinary calls. After saving settings, restart the app
+if it has already started a call; interactive sign-in may be required for the expanded permission.
+The server still requires the operator's A1 binding and an opted-in tutor definition. Client
+compilation and offline parsing tests do not prove actual token claims or a live grounded lesson.
 
 A self-hosted runtime behind a private certificate authority needs that authority installed on the
 phone as a user certificate. The Android app trusts user-installed authorities as well as system

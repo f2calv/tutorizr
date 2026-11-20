@@ -61,7 +61,7 @@ public sealed partial class SettingsPage : ContentPage
         if (!Guid.TryParse(values[ClientIdKey], out _))
             errors.Add("The application ID must be a GUID.");
         if (values[ApiScopeKey].Length == 0 || values[AgentNameKey].Length == 0)
-            errors.Add("Enter the runtime API scope and the tutor agent name.");
+            errors.Add("Enter the runtime API scopes and the tutor agent name.");
         if (!Uri.TryCreate(values[BaseAddressKey], UriKind.Absolute, out var address) || address.Scheme != Uri.UriSchemeHttps)
             errors.Add("The runtime address must be an https:// URL.");
         if (errors.Count > 0)
