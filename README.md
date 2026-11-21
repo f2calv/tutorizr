@@ -75,10 +75,14 @@ described in the [authentication guide](docs/authentication.md#voice-client-sign
 use the published `CasCap.AgentRuntime.Client` `1.7.0`, including realtime conversation continuity; Debug builds use
 an adjacent Agentizr checkout.
 
-- **Windows:** set the settings in user secrets, then start the `Windows Machine` profile.
+- **Windows:** set the settings in user secrets, or use the [Debug-only local JSON overlay](docs/authentication.md#client-configuration),
+  then start the `Windows Machine` profile.
 - **Android:** deploy a Debug build to an emulator or phone, or build a sideload APK with
   `./build-apk.ps1 -Install` when packaging and device deployment are intended. Enter the settings on the app's
   **Settings** tab.
+  For unpublished adjacent sources, use `./build-apk.ps1 -Configuration Debug` with an updated
+  shared APK helper; Release remains the default. Both platforms share speech pace, capability
+  checks and Technical Log. Windows-local JSON settings are never included in the APK.
 
 ## System Context
 

@@ -18,6 +18,9 @@ Everything below is specific to this repository.
   `io.github.f2calv.tutorizr` and MAUI `11.0.10`. Add the unpackaged
   `net11.0-windows10.0.19041.0` target only on Windows for development. Keep its existing
   permissions and device-entered configuration; never package sign-in or runtime settings.
+- Windows Debug uses the shared `CasCap.Common.Configuration` loader with client-local
+  `appsettings.Local*.json` overlays. Keep them gitignored and excluded from publish, pack and
+  Android output; do not link the server's root settings into the voice client.
 - tutorizr is a subject-agnostic tutor on the Agentizr agent runtime; the German language tutor is
   only the first example. Keep subject-specific wording out of the host, channels, voice path and
   documentation; only the learner tool set may model a subject family, and it says so explicitly.

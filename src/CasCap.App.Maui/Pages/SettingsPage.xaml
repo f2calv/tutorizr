@@ -22,7 +22,7 @@
             <Label Style="{StaticResource IntroLabelStyle}"
                    Text="Live calls stream microphone audio to Azure OpenAI. The app does not save audio or transcripts on this device." />
             <Label x:Name="WindowsSettingsHint" Style="{StaticResource IntroLabelStyle}"
-                   Text="On Windows, connection settings come from .NET user secrets or environment variables." />
+                   Text="On Windows, connection settings come from .NET user secrets or environment variables. Debug builds also load client-local appsettings.Local.Development.json; rebuild and restart after editing it." />
 
             <VerticalStackLayout x:Name="ConnectionSettings" Spacing="12">
                 <Label Style="{StaticResource IntroLabelStyle}"

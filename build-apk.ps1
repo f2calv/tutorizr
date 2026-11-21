@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 #Requires -Version 7.4
-# Builds a Release APK of the voice client with the central dotnet-maui skill script; see its help for parameters.
+# Builds a signed APK of the voice client; Release is the default, or pass -Configuration Debug for local sources.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
 

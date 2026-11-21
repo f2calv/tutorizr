@@ -44,6 +44,25 @@
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="appsettings.Local.json;appsettings.Local.Development.json"
+          CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' and '$(Configuration)' == 'Debug'">
+    <None Update="appsettings.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="Never" Pack="false" />
+    <None Update="appsettings.Local.json;appsettings.Local.Development.json"
+          CopyToOutputDirectory="Always" CopyToPublishDirectory="Never" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' and '$(Configuration)' == 'Release'">
+    <PackageReference Include="CasCap.Common.Configuration" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' and '$(Configuration)' != 'Release'">
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Configuration\CasCap.Common.Configuration.csproj" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(Configuration)'=='Release'">
     <PackageReference Include="CasCap.AgentRuntime.Client" />
   </ItemGroup>

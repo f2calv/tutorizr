@@ -97,6 +97,26 @@ validated when the first call starts. On Windows they are read from .NET user se
 which stores them in app preferences, so an APK built in public CI carries none of them. None of these
 values is a secret, but they identify a directory and a registration, so keep them out of tracked files.
 
+Windows Debug also uses the shared
+[`AddStandardConfiguration`](https://github.com/f2calv/CasCap.Common/blob/main/src/CasCap.Common.Configuration/Extensions/ConfigurationBuilderExtensions.cs)
+loader. Its client-local base file is empty; it does not load the server's root settings.
+Copy [the placeholder example](../src/CasCap.App.Maui/appsettings.Local.Development.json.example)
+to `src/CasCap.App.Maui/appsettings.Local.Development.json` and replace every placeholder with
+the approved voice-client registration and runtime settings:
+
+```powershell
+Copy-Item .\src\CasCap.App.Maui\appsettings.Local.Development.json.example .\src\CasCap.App.Maui\appsettings.Local.Development.json
+```
+
+The local file is gitignored and copied only to Windows Debug build output, never to publish
+output, NuGet packages or Android assets. Do not distribute the Debug output directory.
+The standard loader applies JSON sources first, then user secrets and unprefixed environment
+variables; `tutorizr__` environment variables are added last and override all earlier sources.
+An optional client-local `appsettings.Local.json` can supply overrides shared across environments.
+Rebuild and restart after changing a local file; cached clients do not support live settings changes.
+Windows Release keeps its existing user-secret and prefixed-environment configuration path.
+No client secret, password, certificate or realtime provider key belongs in this client.
+
 | Key | Purpose |
 | --- | --- |
 | `TutorClientConfig:TenantId` | Directory of the public client registration |

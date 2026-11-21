@@ -1,0 +1,13 @@
+{
+  "TutorClientConfig": {
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+    "ClientId": "00000000-0000-0000-0000-000000000000",
+    "ApiScope": "api://00000000-0000-0000-0000-000000000000/agent.realtime",
+    "AgentName": "TutorAgent"
+  },
+  "CasCap": {
+    "AgentRuntimeClientOptions": {
+      "BaseAddress": "https://runtime.example.com/"
+    }
+  }
+}

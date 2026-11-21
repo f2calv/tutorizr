@@ -187,7 +187,7 @@ public sealed partial class ConversationPage : ContentPage
         catch (OptionsValidationException ex)
         {
             error = ex;
-            await FailAsync("Tutor settings are incomplete. Enter them on the Settings tab, or in user secrets on Windows.");
+            await FailAsync("Tutor settings are incomplete. Enter them on the Settings tab, in user secrets on Windows, or in the Windows Debug client's appsettings.Local.Development.json.");
         }
         catch (MsalException ex)
         {
