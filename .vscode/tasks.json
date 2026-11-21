@@ -1,0 +1,26 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build and launch Tutorizr Windows Debug",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"src\\CasCap.App.Maui\\CasCap.App.Maui.csproj",
+				"--framework",
+				"net11.0-windows10.0.19041.0",
+				"--configuration",
+				"Debug",
+				"--no-restore",
+				"--launch-profile",
+				"Windows Machine"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			]
+		}
+	]
+}
