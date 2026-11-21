@@ -1,8 +1,11 @@
 using CasCap.AgentRuntime.Contracts.V1;
 using Microsoft.Identity.Client;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 
@@ -25,7 +28,9 @@ public sealed partial class ConversationPage : ContentPage
 
     private readonly TutorCallService _callService;
     private readonly ILogger<ConversationPage> _logger;
-    private readonly Queue<string> _transcript = new();
+    private readonly VoiceCallPreferences _voicePreferences;
+    private readonly CallDiagnosticLog _diagnosticLog;
+    private readonly ObservableCollection<string> _transcript = [];
     private TutorCallState _state = TutorCallState.Disconnected;
     private bool _muted;
     private bool _hearing;
@@ -38,7 +43,11 @@ public sealed partial class ConversationPage : ContentPage
     /// <summary>Initializes a new instance of the <see cref="ConversationPage"/> class.</summary>
     /// <param name="callService">Starts and ends calls through the Agent Runtime.</param>
     /// <param name="logger">The page logger.</param>
-    public ConversationPage(TutorCallService callService, ILogger<ConversationPage> logger)
+    /// <param name="voicePreferences">The current app session's voice preferences.</param>
+    /// <param name="diagnosticLog">The local call setup log.</param>
+    public ConversationPage(
+        TutorCallService callService, ILogger<ConversationPage> logger,
+        VoiceCallPreferences voicePreferences, CallDiagnosticLog diagnosticLog)
     {
         ArgumentNullException.ThrowIfNull(callService);
         ArgumentNullException.ThrowIfNull(logger);
@@ -46,6 +55,9 @@ public sealed partial class ConversationPage : ContentPage
         InitializeComponent();
         _callService = callService;
         _logger = logger;
+        _voicePreferences = voicePreferences;
+        _diagnosticLog = diagnosticLog;
+        TranscriptView.ItemsSource = _transcript;
         Render();
     }
 
@@ -98,20 +110,19 @@ public sealed partial class ConversationPage : ContentPage
     {
         if (_starting is { IsCompleted: false } || _ending is { IsCompleted: false })
             return;
-        if (resume)
-            RememberConversationSwitch.IsToggled = true;
-        _starting = StartCallAsync(resume);
+        _starting = StartCallAsync(resume, resume || _voicePreferences.RetainNewCalls);
         await _starting;
     }
 
-    private async Task StartCallAsync(bool resume)
+    private async Task StartCallAsync(bool resume, bool retain)
     {
+        var started = Stopwatch.GetTimestamp();
+        var stage = "Sign-in";
+        var outcome = "Setup failed";
+        Exception? error = null;
         DetailLabel.Text = string.Empty;
         if (!resume)
-        {
             _transcript.Clear();
-            TranscriptLabel.Text = string.Empty;
-        }
         _muted = false;
         SetState(TutorCallState.Connecting);
         using var timeout = new CancellationTokenSource(ConnectTimeout);
@@ -132,27 +143,28 @@ public sealed partial class ConversationPage : ContentPage
             timeout.Token.ThrowIfCancellationRequested();
             if (!_foreground)
             {
+                outcome = "App left the foreground";
                 DetailLabel.Text = "Return to the app and connect when you are ready.";
                 SetState(TutorCallState.Suspended);
                 return;
             }
+            stage = "Microphone and audio offer";
             if (await CallView.InvokeJavaScriptAsync("createOffer", CallPageJsonContext.Default.String)
                 .WaitAsync(MediaTimeout, timeout.Token) is not { } offer)
             {
                 await FailAsync(MediaFailureMessage);
                 return;
             }
-            var answer = await _callService.StartAsync(
-                offer, timeout.Token, resume, RememberConversationSwitch.IsToggled);
+            stage = "Agent Runtime call setup";
+            var answer = await _callService.StartAsync(offer, timeout.Token, resume, retain);
             timeout.Token.ThrowIfCancellationRequested();
             if (answer is null)
             {
-                await HangUpViewAsync();
-                DetailLabel.Text = "This tutor does not offer voice calls. Check TutorClientConfig:AgentName and the "
-                    + "agent's realtime settings.";
-                SetState(TutorCallState.Disconnected);
+                outcome = "Voice call unavailable";
+                await FailAsync("This tutor does not offer voice calls. Check the tutor name and its realtime settings.");
                 return;
             }
+            stage = "Audio connection";
             if (!await CallView.InvokeJavaScriptAsync(
                 "acceptAnswer", CallPageJsonContext.Default.Boolean, [answer], [CallPageJsonContext.Default.String])
                 .WaitAsync(MediaTimeout, timeout.Token))
@@ -162,43 +174,66 @@ public sealed partial class ConversationPage : ContentPage
             }
             timeout.Token.ThrowIfCancellationRequested();
             SetState(TutorCallState.Listening);
+            outcome = "Setup completed";
         }
         catch (OptionsValidationException ex)
         {
-            _logger.LogWarning(ex, "{ClassName} tutor settings failed validation for {OptionsName}",
-                nameof(ConversationPage), ex.OptionsType.Name);
+            error = ex;
             await FailAsync("Tutor settings are incomplete. Enter them on the Settings tab, or in user secrets on Windows.");
         }
         catch (MsalException ex)
         {
-            _logger.LogWarning(ex, "{ClassName} sign-in failed", nameof(ConversationPage));
+            error = ex;
             await FailAsync("Sign-in failed or was cancelled.");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "{ClassName} call setup failed", nameof(ConversationPage));
+            error = ex;
             await FailAsync(ex.StatusCode switch
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Your account is not allowed to start tutor calls.",
                 HttpStatusCode.TooManyRequests => "The tutor is busy with other calls; please try again shortly.",
-                HttpStatusCode.Conflict => "Resume is unavailable: the conversation expired, belongs to another account, "
-                    + "is busy, its definition changed, or knowledge tools are enabled. Start New with retention off "
-                    + "for a non-retained call.",
-                _ => "Could not start the call through the Agent Runtime.",
+                HttpStatusCode.Conflict when resume => "The runtime rejected Resume. The conversation may be expired, "
+                    + "busy, tied to another account or definition, or incompatible with this tutor. Try New with retention off.",
+                HttpStatusCode.Conflict when retain => "The runtime rejected retention for this new call. "
+                    + "Knowledge-enabled tutors do not support retention. Turn it off in Settings and try New.",
+                _ => "Could not start the call through the Agent Runtime. See Technical Log for details.",
             });
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
+            error = ex;
             if (_state != TutorCallState.Disconnecting)
                 await FailAsync("Connecting took too long; please try again.");
+            else
+                outcome = "Setup cancelled";
         }
-        catch (TimeoutException)
+        catch (TimeoutException ex)
         {
+            error = ex;
             await FailAsync(MediaFailureMessage);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or JsonException)
+        {
+            error = ex;
+            await FailAsync("The call setup response could not be read. See Technical Log for details.");
         }
         finally
         {
             _connecting = null;
+            _diagnosticLog.RecordSetup(resume, retain, Stopwatch.GetElapsedTime(started), stage, outcome, error);
+        }
+    }
+
+    private async void OnCopyErrorClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            await Clipboard.Default.SetTextAsync(DetailLabel.Text);
+        }
+        catch (InvalidOperationException)
+        {
+            await DisplayAlertAsync("Could not copy", "The clipboard is unavailable.", "OK");
         }
     }
 
@@ -325,11 +360,9 @@ public sealed partial class ConversationPage : ContentPage
 
     private void AddTranscript(string speaker, string text)
     {
-        _transcript.Enqueue($"{speaker}: {text}");
-        while (_transcript.Count > MaxTranscriptLines)
-            _transcript.Dequeue();
-        TranscriptLabel.Text = string.Join(Environment.NewLine + Environment.NewLine, _transcript);
-        _ = TranscriptScroll.ScrollToAsync(TranscriptLabel, ScrollToPosition.End, animated: false);
+        if (_transcript.Count == MaxTranscriptLines)
+            _transcript.RemoveAt(0);
+        _transcript.Add($"{speaker}: {text}");
     }
 
     private void SetState(TutorCallState state)
@@ -364,7 +397,7 @@ public sealed partial class ConversationPage : ContentPage
         StateLabel.Text = _muted && active ? $"{_state} (muted)" : _state.ToString();
         StartButton.IsEnabled = _state is TutorCallState.Disconnected or TutorCallState.Error or TutorCallState.Suspended;
         ResumeButton.IsEnabled = StartButton.IsEnabled && _callService.CanResume;
-        RememberConversationSwitch.IsEnabled = StartButton.IsEnabled;
+        CopyErrorButton.IsVisible = _state == TutorCallState.Error;
         MuteButton.IsEnabled = active;
         MuteButton.Text = _muted ? "Unmute" : "Mute";
         EndButton.IsEnabled = active || _state is TutorCallState.Connecting or TutorCallState.Reconnecting;

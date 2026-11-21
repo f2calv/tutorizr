@@ -11,7 +11,5 @@ public static partial class MauiProgram
         var settings = new PreferencesConfigurationProvider(Preferences.Default, SettingsPage.Keys);
         ((IConfigurationBuilder)builder.Configuration).Add(settings);
         builder.Services.AddSingleton(settings);
-        builder.Services.AddSingleton(Preferences.Default);
-        builder.Services.AddTransient<SettingsPage>();
     }
 }

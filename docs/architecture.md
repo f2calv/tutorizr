@@ -144,8 +144,10 @@ request. Provider/control loss or the runtime's existing maximum duration remain
 
 ### Optional Conversation Continuity
 
-The retention switch opts into server-side voice text retention. Agentizr stores at most 40
-utterances and 32,768 characters for 24 hours after the last retained utterance or interruption.
+The retention switch in **Settings** opts new calls into server-side voice text retention and
+resets to off each time the app starts. **Resume** explicitly continues an already retained call.
+Agentizr stores at most 40 utterances and 32,768 characters for 24 hours after the last retained
+utterance or interruption.
 No audio or raw tool outputs are retained; interrupted assistant utterances are omitted rather
 than replaying words the learner may not have heard. This is bounded conversational continuity,
 not lossless audio replay or an unlimited transcript archive.
@@ -160,6 +162,15 @@ normally. The local transcript display remains transient and is not restored fro
 Knowledge-enabled calls do **not** support retention or Resume: replaying previous grounded
 answers could bypass evidence expiry or revocation. They remain ordinary non-retained calls with
 the switch off. Voice context also stays separate from text-session history.
+
+In **Settings**, **Check tutor capabilities** asks a supporting Agentizr runtime for the active
+definition's voice, document knowledge and retention flags. It uses the existing voice sign-in and
+does not start a call, grant knowledge access, or check whether a particular conversation can resume.
+If the runtime does not support the lookup, the app leaves the capability status unknown.
+
+The **Technical Log** tab shows the last 25 call setup outcomes for the current app session,
+including the mode, stage, duration and HTTP status when available. It can be copied or cleared.
+It does not include credentials, endpoints, response bodies, transcripts or tool output.
 
 Conversation continuity requires Agentizr server `1.7.0` or later. Release builds use the
 published `1.7.0` client and contracts; Debug uses the adjacent runtime checkout. Building the APK

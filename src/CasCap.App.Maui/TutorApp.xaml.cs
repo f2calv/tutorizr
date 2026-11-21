@@ -19,7 +19,8 @@ public sealed partial class TutorApp : Application
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var conversation = _serviceProvider.GetRequiredService<ConversationPage>();
-        var window = new Window(new AppShell(conversation, _serviceProvider.GetService<SettingsPage>()));
+        var window = new Window(new AppShell(conversation, _serviceProvider.GetRequiredService<SettingsPage>(),
+            _serviceProvider.GetRequiredService<TechnicalLogPage>()));
         window.Activated += (_, _) => conversation.SetForeground(true);
         window.Deactivated += (_, _) => conversation.SetForeground(false);
         window.Stopped += async (_, _) => await conversation.SuspendAsync();

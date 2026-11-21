@@ -6,29 +6,49 @@
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="12">
             <Label Text="Tutor settings" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <Switch x:Name="RememberConversationSwitch" Toggled="OnRetentionToggled"
+                        SemanticProperties.Description="Allow 24-hour conversation resume for new calls" />
+                <Label Grid.Column="1" Text="Allow 24-hour conversation resume" VerticalOptions="Center" />
+            </Grid>
             <Label Style="{StaticResource IntroLabelStyle}"
-                   Text="The tutor signs you in with your Microsoft account and calls your Agentizr runtime. These values are not secrets and stay on this device." />
-
-            <Label Text="Directory (tenant) ID" />
-            <Entry x:Name="TenantIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
-                   SemanticProperties.Description="Directory (tenant) ID" />
-            <Label Text="Application (client) ID" />
-            <Entry x:Name="ClientIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
-                   SemanticProperties.Description="Application (client) ID" />
-            <Label Text="Runtime API scopes" />
-            <Entry x:Name="ApiScopeEntry" Placeholder="api://00000000-0000-0000-0000-000000000000/agent.realtime"
-                   SemanticProperties.Description="Runtime API scopes, separated by spaces" />
+                   Text="Applies to new calls until you close the app. When on, the runtime can retain conversation text for 24 hours, not audio. Resume explicitly continues a previously retained call." />
             <Label Style="{StaticResource IntroLabelStyle}"
-                   Text="Separate scopes with spaces. Ordinary calls need agent.realtime; knowledge-enabled calls also need the same API's agent.knowledge.search scope and consent." />
-            <Label Text="Tutor agent name" />
-            <Entry x:Name="AgentNameEntry" SemanticProperties.Description="Tutor agent name" />
-            <Label Text="Runtime address" />
-            <Entry x:Name="BaseAddressEntry" Placeholder="https://runtime.example.com/"
-                   Keyboard="Url" SemanticProperties.Description="Runtime address" />
+                   Text="Agentizr configures knowledge tools. When enabled for voice, retained calls and Resume are unavailable." />
+            <Button x:Name="CheckCapabilitiesButton" Text="Check tutor capabilities" HorizontalOptions="Start"
+                    Clicked="OnCheckCapabilitiesClicked" SemanticProperties.Hint="Signs in if needed and checks the active tutor without starting a call" />
+            <Label x:Name="CapabilityStatusLabel" Style="{StaticResource IntroLabelStyle}"
+                   Text="Not checked. This check does not start a call." />
+            <Label Style="{StaticResource IntroLabelStyle}"
+                   Text="Live calls stream microphone audio to Azure OpenAI. The app does not save audio or transcripts on this device." />
+            <Label x:Name="WindowsSettingsHint" Style="{StaticResource IntroLabelStyle}"
+                   Text="On Windows, connection settings come from .NET user secrets or environment variables." />
 
-            <Button Text="Save" Clicked="OnSaveClicked" HorizontalOptions="Start"
-                    SemanticProperties.Hint="Saves the tutor settings on this device" />
-            <Label x:Name="StatusLabel" />
+            <VerticalStackLayout x:Name="ConnectionSettings" Spacing="12">
+                <Label Style="{StaticResource IntroLabelStyle}"
+                       Text="The tutor signs you in with your Microsoft account and calls your Agentizr runtime. Connection settings stay on this device." />
+
+                <Label Text="Directory (tenant) ID" />
+                <Entry x:Name="TenantIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
+                       SemanticProperties.Description="Directory (tenant) ID" />
+                <Label Text="Application (client) ID" />
+                <Entry x:Name="ClientIdEntry" Placeholder="00000000-0000-0000-0000-000000000000"
+                       SemanticProperties.Description="Application (client) ID" />
+                <Label Text="Runtime API scopes" />
+                <Entry x:Name="ApiScopeEntry" Placeholder="api://00000000-0000-0000-0000-000000000000/agent.realtime"
+                       SemanticProperties.Description="Runtime API scopes, separated by spaces" />
+                <Label Style="{StaticResource IntroLabelStyle}"
+                       Text="Separate scopes with spaces. Ordinary calls need agent.realtime; knowledge-enabled calls also need the same API's agent.knowledge.search scope and consent." />
+                <Label Text="Tutor agent name" />
+                <Entry x:Name="AgentNameEntry" SemanticProperties.Description="Tutor agent name" />
+                <Label Text="Runtime address" />
+                <Entry x:Name="BaseAddressEntry" Placeholder="https://runtime.example.com/"
+                       Keyboard="Url" SemanticProperties.Description="Runtime address" />
+
+                <Button x:Name="SaveSettingsButton" Text="Save" Clicked="OnSaveClicked" HorizontalOptions="Start"
+                        SemanticProperties.Hint="Saves the tutor settings on this device" />
+                <Label x:Name="StatusLabel" />
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

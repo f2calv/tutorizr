@@ -1,4 +1,5 @@
 using CasCap.AgentRuntime.Client.Abstractions;
+using Microsoft.Maui.Storage;
 
 namespace CasCap;
 
@@ -20,10 +21,18 @@ public static partial class MauiProgram
         builder.Services.AddTransient<Func<MsalAccessTokenProvider>>(services =>
             services.GetRequiredService<MsalAccessTokenProvider>);
         builder.Services.AddTransient<BearerTokenHandler>();
-        builder.Services.AddAgentRuntimeClient().AddHttpMessageHandler<BearerTokenHandler>();
+        builder.Services.AddAgentRuntimeClient()
+            .AddHttpMessageHandler<BearerTokenHandler>()
+            .AddTypedClient<VoiceCapabilityClient>();
         builder.Services.AddTransient<Func<IAgentRuntimeClient>>(services => services.GetRequiredService<IAgentRuntimeClient>);
+        builder.Services.AddTransient<Func<VoiceCapabilityClient>>(services => services.GetRequiredService<VoiceCapabilityClient>);
         builder.Services.AddTransient<TutorCallService>();
         builder.Services.AddTransient<ConversationPage>();
+        builder.Services.AddSingleton(Preferences.Default);
+        builder.Services.AddSingleton<VoiceCallPreferences>();
+        builder.Services.AddSingleton<CallDiagnosticLog>();
+        builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<TechnicalLogPage>();
 
 #if DEBUG
         builder.Services.AddHybridWebViewDeveloperTools();
