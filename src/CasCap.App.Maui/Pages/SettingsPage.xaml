@@ -14,7 +14,7 @@
             <Label Style="{StaticResource IntroLabelStyle}"
                    Text="Applies to new calls until you close the app. When on, the runtime can retain conversation text for 24 hours, not audio. Resume explicitly continues a previously retained call." />
             <Label Style="{StaticResource IntroLabelStyle}"
-                   Text="Agentizr configures knowledge tools. When enabled for voice, retained calls and Resume are unavailable." />
+                   Text="Agentizr configures knowledge tools and retention eligibility. Check the tutor's capabilities below." />
             <Button x:Name="CheckCapabilitiesButton" Text="Check tutor capabilities" HorizontalOptions="Start"
                     Clicked="OnCheckCapabilitiesClicked" SemanticProperties.Hint="Signs in if needed and checks the active tutor without starting a call" />
             <Label x:Name="CapabilityStatusLabel" Style="{StaticResource IntroLabelStyle}"
@@ -38,7 +38,7 @@
                 <Entry x:Name="ApiScopeEntry" Placeholder="api://00000000-0000-0000-0000-000000000000/agent.realtime"
                        SemanticProperties.Description="Runtime API scopes, separated by spaces" />
                 <Label Style="{StaticResource IntroLabelStyle}"
-                       Text="Separate scopes with spaces. Ordinary calls need agent.realtime; knowledge-enabled calls also need the same API's agent.knowledge.search scope and consent." />
+                       Text="Separate scopes with spaces. Calls need agent.realtime. Private knowledge also requires the same API's agent.knowledge.search scope and consent." />
                 <Label Text="Tutor agent name" />
                 <Entry x:Name="AgentNameEntry" SemanticProperties.Description="Tutor agent name" />
                 <Label Text="Runtime address" />

@@ -194,9 +194,9 @@ public sealed partial class ConversationPage : ContentPage
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Your account is not allowed to start tutor calls.",
                 HttpStatusCode.TooManyRequests => "The tutor is busy with other calls; please try again shortly.",
                 HttpStatusCode.Conflict when resume => "The runtime rejected Resume. The conversation may be expired, "
-                    + "busy, tied to another account or definition, or incompatible with this tutor. Try New with retention off.",
+                    + "busy, tied to another account, or incompatible with the current tutor or collection policy. Try New with retention off.",
                 HttpStatusCode.Conflict when retain => "The runtime rejected retention for this new call. "
-                    + "Knowledge-enabled tutors do not support retention. Turn it off in Settings and try New.",
+                    + "Check tutor capabilities in Settings, or turn retention off and try New.",
                 _ => "Could not start the call through the Agent Runtime. See Technical Log for details.",
             });
         }

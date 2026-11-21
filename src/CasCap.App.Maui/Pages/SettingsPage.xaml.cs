@@ -95,8 +95,8 @@ public sealed partial class SettingsPage : ContentPage
                 ? "No capability information. Check the tutor name and whether the runtime supports this check."
                 : $"Voice: {(capabilities.VoiceEnabled ? "configured" : "not configured")}\n"
                     + $"Knowledge tools for voice: {(capabilities.KnowledgeToolsEnabled ? "enabled" : "disabled")}\n"
-                    + $"Retention policy: {(capabilities.RetentionAllowed ? "allowed by the definition" : "not allowed")}\n"
-                    + "This does not check provider health, permissions for knowledge search, or an existing conversation.";
+                    + $"Retention policy: {(capabilities.RetentionAllowed ? "allowed by the runtime configuration" : "not allowed")}\n"
+                    + "This does not check provider health, document availability, your permissions, or an existing conversation.";
         }
         catch (OptionsValidationException)
         {
