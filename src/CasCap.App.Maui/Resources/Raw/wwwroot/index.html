@@ -14,6 +14,11 @@
         let reconnectTimer = null;
         const reconnectGraceMilliseconds = 20_000;
         let mediaGeneration = 0;
+        let events = null;
+        const activeResponses = new Set();
+        let paceChange = null;
+        let paceRequestId = 0;
+        const paceTimeoutMilliseconds = 15_000;
 
         function notify(message) {
             window.HybridWebView.SendRawMessage(JSON.stringify(message));
@@ -49,6 +54,21 @@
 
         function onProviderEvent(event) {
             switch (event.type) {
+                case 'response.created':
+                    activeResponses.add(event.response.id);
+                    break;
+                case 'response.done':
+                    activeResponses.delete(event.response.id);
+                    sendPendingPace();
+                    break;
+                case 'session.updated':
+                    if (paceChange?.sent && event.session?.audio?.output?.speed === paceChange.speed)
+                        finishPaceChange(true);
+                    break;
+                case 'error':
+                    if (paceChange?.sent && event.error?.event_id === paceChange.id)
+                        finishPaceChange(false);
+                    break;
                 case 'conversation.item.input_audio_transcription.completed':
                     notify({ type: 'transcript', speaker: 'learner', text: event.transcript ?? '' });
                     break;
@@ -64,6 +84,44 @@
                     notify({ type: 'state', value: 'listening' });
                     break;
             }
+        }
+
+        function finishPaceChange(applied) {
+            const change = paceChange;
+            if (change === null)
+                return;
+            paceChange = null;
+            clearTimeout(change.timer);
+            change.resolve(applied);
+        }
+
+        function sendPendingPace() {
+            if (paceChange === null || paceChange.sent || activeResponses.size !== 0 || events?.readyState !== 'open')
+                return;
+            try {
+                events.send(JSON.stringify({
+                    type: 'session.update',
+                    event_id: paceChange.id,
+                    session: { type: 'realtime', audio: { output: { speed: paceChange.speed } } },
+                }));
+                paceChange.sent = true;
+            } catch (error) {
+                if (error.name !== 'InvalidStateError' && error.name !== 'OperationError')
+                    throw error;
+                finishPaceChange(false);
+            }
+        }
+
+        function setSpeechSpeed(speed) {
+            if (![0.8, 1, 1.2].includes(speed) || events === null || events.readyState === 'closed' || paceChange !== null)
+                return false;
+            return new Promise(resolve => {
+                paceChange = {
+                    speed, resolve, id: `speech-pace-${++paceRequestId}`, sent: false,
+                    timer: setTimeout(() => finishPaceChange(false), paceTimeoutMilliseconds),
+                };
+                sendPendingPace();
+            });
         }
 
         // Returns the SDP offer, or null when the microphone or peer connection cannot start.
@@ -109,7 +167,17 @@
                 };
                 microphone.getTracks().forEach(track => peer.addTrack(track, microphone));
                 meter = startMeter(microphone);
-                peer.createDataChannel('oai-events').onmessage = message => {
+                const channel = connection.createDataChannel('oai-events');
+                events = channel;
+                channel.onopen = () => {
+                    if (events === channel)
+                        sendPendingPace();
+                };
+                channel.onclose = () => {
+                    if (events === channel)
+                        finishPaceChange(false);
+                };
+                channel.onmessage = message => {
                     if (peer === connection)
                         onProviderEvent(JSON.parse(message.data));
                 };
@@ -142,6 +210,9 @@
 
         function hangUp() {
             mediaGeneration++;
+            finishPaceChange(false);
+            activeResponses.clear();
+            events = null;
             clearTimeout(reconnectTimer);
             reconnectTimer = null;
             meter?.stop();

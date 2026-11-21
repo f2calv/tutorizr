@@ -21,6 +21,7 @@ public sealed partial class ConversationPage : ContentPage
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan MediaTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan HangUpTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SpeechPaceTimeout = TimeSpan.FromSeconds(20);
     private const int MaxTranscriptLines = 40;
     private const string MicrophonePulse = nameof(MicrophonePulse);
     private const string MediaFailureMessage =
@@ -36,6 +37,8 @@ public sealed partial class ConversationPage : ContentPage
     private bool _hearing;
     private bool _foreground = true;
     private bool _authenticating;
+    private bool _changingSpeechPace;
+    private int _speechPaceGeneration;
     private CancellationTokenSource? _connecting;
     private Task? _starting;
     private Task? _ending;
@@ -124,6 +127,9 @@ public sealed partial class ConversationPage : ContentPage
         if (!resume)
             _transcript.Clear();
         _muted = false;
+        _speechPaceGeneration++;
+        _changingSpeechPace = false;
+        SpeechPaceLabel.Text = string.Empty;
         SetState(TutorCallState.Connecting);
         using var timeout = new CancellationTokenSource(ConnectTimeout);
         _connecting = timeout;
@@ -245,6 +251,43 @@ public sealed partial class ConversationPage : ContentPage
         Render();
     }
 
+    private async void OnSpeechPaceClicked(object? sender, EventArgs e)
+    {
+        if (_changingSpeechPace || _state is not (TutorCallState.Listening or TutorCallState.Speaking)
+            || sender is not Button { CommandParameter: string pace })
+            return;
+
+        var speed = pace switch
+        {
+            "Slow" => 0.8,
+            "Normal" => 1.0,
+            "Fast" => 1.2,
+            _ => throw new InvalidOperationException("Unknown speech pace control."),
+        };
+        var generation = _speechPaceGeneration;
+        _changingSpeechPace = true;
+        SpeechPaceLabel.Text = $"Requesting {pace.ToLowerInvariant()} pace between replies...";
+        Render();
+        var applied = false;
+        try
+        {
+            applied = await CallView.InvokeJavaScriptAsync(
+                "setSpeechSpeed", CallPageJsonContext.Default.Boolean, [speed], [CallPageJsonContext.Default.Double])
+                .WaitAsync(SpeechPaceTimeout);
+        }
+        catch (Exception ex) when (ex is TimeoutException or ObjectDisposedException or InvalidOperationException or JsonException)
+        {
+            if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Warning))
+                _logger.LogWarning("{ClassName} could not confirm the speech pace change", nameof(ConversationPage));
+        }
+        if (generation != _speechPaceGeneration)
+            return;
+
+        _changingSpeechPace = false;
+        SpeechPaceLabel.Text = applied ? $"Current pace: {pace}" : "The tutor did not confirm the pace change. Try again.";
+        Render();
+    }
+
     private async void OnEndClicked(object? sender, EventArgs e)
     {
         EndButton.IsEnabled = false;
@@ -305,6 +348,7 @@ public sealed partial class ConversationPage : ContentPage
         var wasActive = _state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting
             or TutorCallState.Reconnecting;
         SetState(TutorCallState.Disconnecting);
+        _speechPaceGeneration++;
         if (_connecting is { } connecting)
             await connecting.CancelAsync();
         if (_starting is { IsCompleted: false } starting)
@@ -399,6 +443,8 @@ public sealed partial class ConversationPage : ContentPage
         ResumeButton.IsEnabled = StartButton.IsEnabled && _callService.CanResume;
         CopyErrorButton.IsVisible = _state == TutorCallState.Error;
         MuteButton.IsEnabled = active;
+        SpeechPaceControls.IsVisible = active || _state == TutorCallState.Reconnecting;
+        SpeechPaceControls.IsEnabled = active && !_changingSpeechPace;
         MuteButton.Text = _muted ? "Unmute" : "Mute";
         EndButton.IsEnabled = active || _state is TutorCallState.Connecting or TutorCallState.Reconnecting;
         MicrophoneIndicator.IsVisible = active;

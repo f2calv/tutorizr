@@ -145,6 +145,10 @@ The separate communications pipeline can disclose content to the operator's moni
 
 The live voice client streams microphone audio to Azure OpenAI only while a session is active and
 shows transcripts transiently. It neither logs nor stores audio or transcripts on the device.
+
+During a call, **Speech pace** offers Slow (0.8x), Normal (1.0x), and Fast (1.2x).
+Tutorizr requests the change between replies and shows whether the provider confirms it.
+The setting applies only to the current call and does not change the tutor's language level.
 Optional Resume retains bounded conversation text in Agentizr for 24 hours, with caller isolation;
 it stores only an opaque reference on the device. Retention is off by default and unavailable for
 knowledge-enabled calls. See the [retention boundaries](docs/architecture.md#optional-conversation-continuity).

@@ -14,6 +14,15 @@
             <Label x:Name="DetailLabel" Style="{StaticResource IntroLabelStyle}" />
             <Button x:Name="CopyErrorButton" Text="Copy error" Clicked="OnCopyErrorClicked"
                     IsVisible="False" HorizontalOptions="Start" />
+            <VerticalStackLayout x:Name="SpeechPaceControls" Spacing="4" IsVisible="False">
+                <Label Text="Speech pace" />
+                <HorizontalStackLayout Spacing="8">
+                    <Button Text="Slow" CommandParameter="Slow" Clicked="OnSpeechPaceClicked" />
+                    <Button Text="Normal" CommandParameter="Normal" Clicked="OnSpeechPaceClicked" />
+                    <Button Text="Fast" CommandParameter="Fast" Clicked="OnSpeechPaceClicked" />
+                </HorizontalStackLayout>
+                <Label x:Name="SpeechPaceLabel" SemanticProperties.Description="Speech pace status" />
+            </VerticalStackLayout>
         </VerticalStackLayout>
         <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
             <Button x:Name="StartButton" Text="New" Clicked="OnStartClicked"

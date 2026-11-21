@@ -28,7 +28,15 @@ function harness() {
         RTCPeerConnection: class {
             constructor() { connections.push(this); this.connectionState = 'new'; }
             addTrack() {}
-            createDataChannel() { return {}; }
+            createDataChannel() {
+                const sent = [];
+                this.channel = {
+                    readyState: 'open',
+                    sent,
+                    send: json => sent.push(JSON.parse(json)),
+                };
+                return this.channel;
+            }
             async createOffer() { return { sdp: 'synthetic-offer' }; }
             async setLocalDescription(offer) { this.localDescription = offer; }
             async setRemoteDescription() {}
@@ -51,6 +59,9 @@ function harness() {
     vm.runInContext(script, context);
     return {
         context, messages, connections, tracks, remote,
+        providerEvent(event) {
+            connections.at(-1).channel.onmessage({ data: JSON.stringify(event) });
+        },
         state(value, connection = connections.at(-1)) {
             connection.connectionState = value;
             connection.onconnectionstatechange();
@@ -62,6 +73,47 @@ function harness() {
         },
     };
 }
+
+test('speech pace waits for the active reply and only updates provider audio speed', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    const { sent } = h.connections[0].channel;
+    h.providerEvent({ type: 'response.created', response: { id: 'reply' } });
+    const applied = h.context.setSpeechSpeed(0.8);
+    assert.equal(sent.length, 0);
+    h.providerEvent({ type: 'response.done', response: { id: 'reply' } });
+    assert.deepEqual(sent, [{
+        type: 'session.update',
+        event_id: 'speech-pace-1',
+        session: { type: 'realtime', audio: { output: { speed: 0.8 } } },
+    }]);
+    h.providerEvent({ type: 'session.updated', session: { audio: { output: { speed: 0.8 } } } });
+    assert.equal(await applied, true);
+});
+
+test('speech pace rejects provider errors and times out without acknowledgement', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    const fast = h.context.setSpeechSpeed(1.2);
+    h.providerEvent({ type: 'error', error: { event_id: 'speech-pace-1' } });
+    assert.equal(await fast, false);
+
+    const normal = h.context.setSpeechSpeed(1);
+    h.providerEvent({ type: 'session.updated', session: { audio: { output: { speed: 1.2 } } } });
+    h.advance(15_000);
+    assert.equal(await normal, false);
+});
+
+test('hang-up discards a queued pace update rather than sending it on the next call', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.providerEvent({ type: 'response.created', response: { id: 'old-reply' } });
+    const queued = h.context.setSpeechSpeed(0.8);
+    h.context.hangUp();
+    assert.equal(await queued, false);
+    await h.context.createOffer();
+    assert.deepEqual(h.connections.at(-1).channel.sent, []);
+});
 
 test('disconnect gets exactly twenty seconds, including duplicate notifications', async () => {
     const h = harness();

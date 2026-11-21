@@ -6,5 +6,6 @@ namespace CasCap.Models;
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(bool))]
+[JsonSerializable(typeof(double))]
 [JsonSerializable(typeof(VoiceCapabilities))]
 internal sealed partial class CallPageJsonContext : JsonSerializerContext;
