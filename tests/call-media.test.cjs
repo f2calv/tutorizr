@@ -88,7 +88,15 @@ test('speech pace waits for the active reply and only updates provider audio spe
         session: { type: 'realtime', audio: { output: { speed: 0.8 } } },
     }]);
     h.providerEvent({ type: 'session.updated', session: { audio: { output: { speed: 0.8 } } } });
-    assert.equal(await applied, true);
+    assert.equal(await applied, 'confirmed');
+});
+
+test('speech pace accepts a provider acknowledgement with floating-point rounding', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    const fast = h.context.setSpeechSpeed(1.2);
+    h.providerEvent({ type: 'session.updated', session: { audio: { output: { speed: 1.2000000476837158 } } } });
+    assert.equal(await fast, 'confirmed');
 });
 
 test('speech pace rejects provider errors and times out without acknowledgement', async () => {
@@ -96,12 +104,12 @@ test('speech pace rejects provider errors and times out without acknowledgement'
     await h.context.createOffer();
     const fast = h.context.setSpeechSpeed(1.2);
     h.providerEvent({ type: 'error', error: { event_id: 'speech-pace-1' } });
-    assert.equal(await fast, false);
+    assert.equal(await fast, 'rejected');
 
     const normal = h.context.setSpeechSpeed(1);
     h.providerEvent({ type: 'session.updated', session: { audio: { output: { speed: 1.2 } } } });
     h.advance(15_000);
-    assert.equal(await normal, false);
+    assert.equal(await normal, 'unconfirmed');
 });
 
 test('hang-up discards a queued pace update rather than sending it on the next call', async () => {
@@ -110,7 +118,7 @@ test('hang-up discards a queued pace update rather than sending it on the next c
     h.providerEvent({ type: 'response.created', response: { id: 'old-reply' } });
     const queued = h.context.setSpeechSpeed(0.8);
     h.context.hangUp();
-    assert.equal(await queued, false);
+    assert.equal(await queued, 'not-sent');
     await h.context.createOffer();
     assert.deepEqual(h.connections.at(-1).channel.sent, []);
 });

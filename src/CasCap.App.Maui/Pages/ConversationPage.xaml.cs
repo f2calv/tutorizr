@@ -39,6 +39,7 @@ public sealed partial class ConversationPage : ContentPage
     private bool _authenticating;
     private bool _changingSpeechPace;
     private int _speechPaceGeneration;
+    private Button? _selectedPaceButton;
     private CancellationTokenSource? _connecting;
     private Task? _starting;
     private Task? _ending;
@@ -129,7 +130,8 @@ public sealed partial class ConversationPage : ContentPage
         _muted = false;
         _speechPaceGeneration++;
         _changingSpeechPace = false;
-        SpeechPaceLabel.Text = string.Empty;
+        SelectPace(NormalPaceButton);
+        SpeechPaceLabel.Text = "Starting pace: Normal";
         SetState(TutorCallState.Connecting);
         using var timeout = new CancellationTokenSource(ConnectTimeout);
         _connecting = timeout;
@@ -254,25 +256,21 @@ public sealed partial class ConversationPage : ContentPage
     private async void OnSpeechPaceClicked(object? sender, EventArgs e)
     {
         if (_changingSpeechPace || _state is not (TutorCallState.Listening or TutorCallState.Speaking)
-            || sender is not Button { CommandParameter: string pace })
+            || sender is not Button button)
             return;
 
-        var speed = pace switch
-        {
-            "Slow" => 0.8,
-            "Normal" => 1.0,
-            "Fast" => 1.2,
-            _ => throw new InvalidOperationException("Unknown speech pace control."),
-        };
+        var speed = button == SlowPaceButton ? 0.8 : button == FastPaceButton ? 1.2 : 1.0;
         var generation = _speechPaceGeneration;
+        var previous = _selectedPaceButton;
+        SelectPace(button);
         _changingSpeechPace = true;
-        SpeechPaceLabel.Text = $"Requesting {pace.ToLowerInvariant()} pace between replies...";
+        SpeechPaceLabel.Text = $"Requesting {button.Text} between replies...";
         Render();
-        var applied = false;
+        string? result = null;
         try
         {
-            applied = await CallView.InvokeJavaScriptAsync(
-                "setSpeechSpeed", CallPageJsonContext.Default.Boolean, [speed], [CallPageJsonContext.Default.Double])
+            result = await CallView.InvokeJavaScriptAsync(
+                "setSpeechSpeed", CallPageJsonContext.Default.String, [speed], [CallPageJsonContext.Default.Double])
                 .WaitAsync(SpeechPaceTimeout);
         }
         catch (Exception ex) when (ex is TimeoutException or ObjectDisposedException or InvalidOperationException or JsonException)
@@ -284,8 +282,35 @@ public sealed partial class ConversationPage : ContentPage
             return;
 
         _changingSpeechPace = false;
-        SpeechPaceLabel.Text = applied ? $"Current pace: {pace}" : "The tutor did not confirm the pace change. Try again.";
+        if (result is "rejected" or "not-sent")
+            SelectPace(previous);
+        SpeechPaceLabel.Text = result switch
+        {
+            "confirmed" => $"Current pace: {button.Text}",
+            "rejected" => $"The tutor rejected {button.Text}. Try again.",
+            "not-sent" => $"Couldn't send {button.Text}. Try again between replies.",
+            _ => $"Selected pace: {button.Text} (not verified)",
+        };
         Render();
+    }
+
+    private void SelectPace(Button? button)
+    {
+        if (_selectedPaceButton is { } previous)
+        {
+            previous.ClearValue(Button.BorderColorProperty);
+            previous.ClearValue(Button.BorderWidthProperty);
+            previous.ClearValue(Button.FontAttributesProperty);
+            previous.ClearValue(SemanticProperties.DescriptionProperty);
+        }
+        _selectedPaceButton = button;
+        if (button is null)
+            return;
+
+        button.SetAppThemeColor(Button.BorderColorProperty, Colors.DarkSlateBlue, Colors.Lavender);
+        button.BorderWidth = 3;
+        button.FontAttributes = FontAttributes.Bold;
+        SemanticProperties.SetDescription(button, $"{button.Text}, selected");
     }
 
     private async void OnEndClicked(object? sender, EventArgs e)

@@ -17,11 +17,11 @@
             <VerticalStackLayout x:Name="SpeechPaceControls" Spacing="4" IsVisible="False">
                 <Label Text="Speech pace" />
                 <HorizontalStackLayout Spacing="8">
-                    <Button Text="Slow" CommandParameter="Slow" Clicked="OnSpeechPaceClicked" />
-                    <Button Text="Normal" CommandParameter="Normal" Clicked="OnSpeechPaceClicked" />
-                    <Button Text="Fast" CommandParameter="Fast" Clicked="OnSpeechPaceClicked" />
+                    <Button x:Name="SlowPaceButton" Text="Slow" Clicked="OnSpeechPaceClicked" />
+                    <Button x:Name="NormalPaceButton" Text="Normal" Clicked="OnSpeechPaceClicked" />
+                    <Button x:Name="FastPaceButton" Text="Fast" Clicked="OnSpeechPaceClicked" />
                 </HorizontalStackLayout>
-                <Label x:Name="SpeechPaceLabel" SemanticProperties.Description="Speech pace status" />
+                <Label x:Name="SpeechPaceLabel" />
             </VerticalStackLayout>
         </VerticalStackLayout>
         <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">

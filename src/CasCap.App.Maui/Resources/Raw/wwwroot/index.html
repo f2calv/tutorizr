@@ -19,6 +19,7 @@
         let paceChange = null;
         let paceRequestId = 0;
         const paceTimeoutMilliseconds = 15_000;
+        const pacePrecision = 0.001;
 
         function notify(message) {
             window.HybridWebView.SendRawMessage(JSON.stringify(message));
@@ -62,12 +63,13 @@
                     sendPendingPace();
                     break;
                 case 'session.updated':
-                    if (paceChange?.sent && event.session?.audio?.output?.speed === paceChange.speed)
-                        finishPaceChange(true);
+                    const speed = event.session?.audio?.output?.speed;
+                    if (paceChange?.sent && typeof speed === 'number' && Math.abs(speed - paceChange.speed) < pacePrecision)
+                        finishPaceChange('confirmed');
                     break;
                 case 'error':
                     if (paceChange?.sent && event.error?.event_id === paceChange.id)
-                        finishPaceChange(false);
+                        finishPaceChange('rejected');
                     break;
                 case 'conversation.item.input_audio_transcription.completed':
                     notify({ type: 'transcript', speaker: 'learner', text: event.transcript ?? '' });
@@ -86,13 +88,13 @@
             }
         }
 
-        function finishPaceChange(applied) {
+        function finishPaceChange(result) {
             const change = paceChange;
             if (change === null)
                 return;
             paceChange = null;
             clearTimeout(change.timer);
-            change.resolve(applied);
+            change.resolve(result);
         }
 
         function sendPendingPace() {
@@ -108,17 +110,18 @@
             } catch (error) {
                 if (error.name !== 'InvalidStateError' && error.name !== 'OperationError')
                     throw error;
-                finishPaceChange(false);
+                finishPaceChange('not-sent');
             }
         }
 
         function setSpeechSpeed(speed) {
             if (![0.8, 1, 1.2].includes(speed) || events === null || events.readyState === 'closed' || paceChange !== null)
-                return false;
+                return 'not-sent';
             return new Promise(resolve => {
                 paceChange = {
                     speed, resolve, id: `speech-pace-${++paceRequestId}`, sent: false,
-                    timer: setTimeout(() => finishPaceChange(false), paceTimeoutMilliseconds),
+                    timer: setTimeout(() => finishPaceChange(paceChange.sent ? 'unconfirmed' : 'not-sent'),
+                        paceTimeoutMilliseconds),
                 };
                 sendPendingPace();
             });
@@ -175,7 +178,7 @@
                 };
                 channel.onclose = () => {
                     if (events === channel)
-                        finishPaceChange(false);
+                        finishPaceChange(paceChange?.sent ? 'unconfirmed' : 'not-sent');
                 };
                 channel.onmessage = message => {
                     if (peer === connection)
@@ -210,7 +213,7 @@
 
         function hangUp() {
             mediaGeneration++;
-            finishPaceChange(false);
+            finishPaceChange(paceChange?.sent ? 'unconfirmed' : 'not-sent');
             activeResponses.clear();
             events = null;
             clearTimeout(reconnectTimer);
