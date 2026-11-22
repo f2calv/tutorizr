@@ -1,9 +1,10 @@
 # CasCap.App.Server
 
-The .NET 11 ASP.NET Core host for tutorizr, the subject-agnostic tutor on the
-[Agentizr agent runtime](https://github.com/f2calv/agentizr). It runs Signal communications,
-learner-progress MCP tools, or both, against external Redis and Agentizr services. The subject a
-tutor teaches comes from its Agentizr agent definition; this host contains no teaching behaviour.
+The .NET 11 ASP.NET Core host for tutorizr, a language-agnostic language-learning app powered by
+realtime AI models through the [Agentizr agent runtime](https://github.com/f2calv/agentizr).
+It runs Signal admin/debug communications, learner-progress MCP tools, or both, against external
+Redis and Agentizr services. The tutor's language and teaching behaviour come from its Agentizr
+agent definition; the separate voice client provides realtime spoken lessons.
 
 ## Start Here
 
@@ -36,9 +37,9 @@ Learner state belongs to the authenticated voice login; machine-only Signal runs
 
 ## MCP Contract
 
-The learner tools model language learning: CEFR levels, spaced-repetition terms and categorised
-mistakes. Spaced repetition and mistake tracking work for any subject with items to recall; the level
-tools assume a language tutor. The German tutor is the first example definition using them.
+The learner tools model language learning: CEFR levels, spaced-repetition vocabulary and categorised
+mistakes. They are not tied to a particular language; the German tutor is the first example definition
+using them. The CEFR target level is configurable.
 
 The configurable MCP path defaults to `/mcp`. It uses stateless Streamable HTTP, requires Basic
 authentication and rejects requests carrying an `Origin` header with 403. Only explicitly registered

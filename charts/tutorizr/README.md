@@ -1,9 +1,10 @@
 # tutorizr
 
-The application umbrella chart for the tutorizr host, the Signal channel and learner MCP tools of a
-subject-agnostic tutor on the [Agentizr agent runtime](https://github.com/f2calv/agentizr). It
-configures one `workload` dependency under the `tutorizr` alias, with a single-subscriber rollout
-strategy.
+The application umbrella chart for the tutorizr host: Signal admin/debug communications and
+learner MCP tools for a language-agnostic language-learning app powered by realtime AI models
+through the [Agentizr agent runtime](https://github.com/f2calv/agentizr).
+The separate live voice client is not deployed by this chart. It configures one `workload`
+dependency under the `tutorizr` alias, with a single-subscriber rollout strategy.
 
 ## Installation
 

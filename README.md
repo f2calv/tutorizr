@@ -1,10 +1,9 @@
 # tutorizr
 
-tutorizr is a subject-agnostic, agentic tutor built on the [Agentizr agent runtime](https://github.com/f2calv/agentizr).
-The tutor is an Agentizr agent: its teaching behaviour, model and session live in an agent definition
-published to the runtime, so the same host can tutor any language, school subject, hobby or skill by
-publishing a different definition. tutorizr supplies the parts a runtime does not own: the channels
-a learner reaches the tutor through and the learner-progress tools the tutor calls.
+tutorizr is a language-agnostic language-learning app powered by realtime AI models through the
+[Agentizr agent runtime](https://github.com/f2calv/agentizr). Its teaching behaviour, language,
+model and session live in a tutor agent definition published to the runtime, rather than being
+hardcoded in the application. tutorizr supplies the live voice client and learner-progress tools.
 
 - **Admin/debug chat:** a .NET 11 host relays a Signal group's conversation, including transcribed
   voice notes, to the runtime through the [Comms pipeline](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/README.md).
@@ -15,10 +14,10 @@ a learner reaches the tutor through and the learner-progress tools the tutor cal
   brokered realtime calls ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)): the runtime applies
   the tutor definition and runs its tools, while audio flows over WebRTC between the client and Azure OpenAI.
 
-The first example tutor is a German language tutor, and today's learner tools model language
-learning: levels on the CEFR scale, spaced-repetition vocabulary and categorised mistakes. Nothing in
-the runtime integration, channels or voice path is specific to German or to languages. This
-repository ships no tutor definition, model, word lists or exam material.
+The first example tutor teaches German; the application is not tied to German or any one language.
+Its learner tools model language learning: CEFR levels, spaced-repetition vocabulary and categorised
+mistakes. Realtime voice currently uses Azure OpenAI through Agentizr. This repository ships no
+tutor definition, model, word lists or exam material.
 
 ## Projects
 
@@ -124,18 +123,18 @@ Signal remains an admin/debug path without learner ownership.
 The [voice lifecycle](docs/architecture.md#voice-call-lifecycle) explains connection
 recovery, screen changes and explicit resumption.
 
-## Subjects and the Example Tutor
+## Languages and the Example Tutor
 
-| Layer | Subject-specific? | Where it is defined |
+| Layer | Tied to a particular language? | Where it is defined |
 | --- | --- | --- |
 | Teaching behaviour, persona and curriculum | Yes, per tutor | The tutor's Agentizr agent definition, published with [`IAgentDefinitionAdminClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentDefinitionAdminClient.cs) |
 | Conversation turns and sessions | No | [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), called by the [Comms responder](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) |
 | Chat, voice notes and live voice | No | Signal through [signalizr](https://github.com/f2calv/signalizr); speech through [`IVoiceTranscriptionService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceTranscriptionService.cs) and [`IVoiceSynthesisService`](https://github.com/f2calv/CasCap.Api.Voice/blob/0.3.0/src/CasCap.Api.Voice/Abstractions/IVoiceSynthesisService.cs); the live voice client |
-| Learner-progress tools | Language learning today | [`TutorMcpQueryService`](src/CasCap.App.Server/Services/TutorMcpQueryService.cs) over [`ILearnerStore`](src/CasCap.App.Server/Abstractions/ILearnerStore.cs): CEFR levels, spaced-repetition terms and mistakes |
+| Learner-progress tools | No; designed for language learning | [`TutorMcpQueryService`](src/CasCap.App.Server/Services/TutorMcpQueryService.cs) over [`ILearnerStore`](src/CasCap.App.Server/Abstractions/ILearnerStore.cs): CEFR levels, spaced-repetition terms and mistakes |
 
-Spaced repetition and mistake tracking suit any subject with facts to recall, such as a second
-language, anatomy terms or chess openings. The CEFR level scale is language-specific; a tutor for
-another kind of subject uses the tools without relying on levels, or needs a further tool set.
+The learner tools track vocabulary practice, recurring language mistakes and estimated proficiency
+on the CEFR scale. CEFR is language-specific, not German-specific; the target level is configurable.
+Language and curriculum belong to the tutor definition, while the host persists learner progress.
 
 ## Voice and Data Boundaries
 

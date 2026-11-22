@@ -1,6 +1,7 @@
 # Authentication
 
-tutorizr has three authenticated connections: the live voice client signs a learner in and calls the
+tutorizr's realtime language-learning path has three authenticated connections: the live voice
+client signs a learner in and calls the
 Agentizr runtime for them, the tutor host calls the runtime as itself, and the runtime calls the
 host's learner tools. This page covers the tutorizr side of each. The runtime side, including how a
 token is mapped to a tenant and which permission each endpoint needs, is described in

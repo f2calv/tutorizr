@@ -2,9 +2,10 @@
 
 This drilldown opens the tutorizr host from the [System Context](../README.md#system-context) into its
 containers and components, then follows one learner turn and the spaced-repetition lifecycle.
-Teaching behaviour, persona and subject live in the tutor's agent definition in the
+Tutorizr is a language-agnostic language-learning app using realtime AI models.
+Teaching behaviour, persona and language live in the tutor's agent definition in the
 [Agentizr agent runtime](https://github.com/f2calv/agentizr/blob/1.7.0/docs/architecture.md), not in
-this host, so the same containers serve any subject; the German tutor is only the first example.
+this host, so the same containers support different languages; German is only the first example.
 
 ## Containers
 
@@ -228,7 +229,7 @@ sequenceDiagram
 
 ## Spaced-Repetition Lifecycle
 
-A term, word, fact or other recall item moves through five Leitner boxes. The interval waited after
+A vocabulary word or phrase moves through five Leitner boxes. The interval waited after
 a correct answer depends on the box the term reaches.
 
 ```mermaid

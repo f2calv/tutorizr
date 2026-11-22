@@ -21,9 +21,10 @@ Everything below is specific to this repository.
 - Windows Debug uses the shared `CasCap.Common.Configuration` loader with client-local
   `appsettings.Local*.json` overlays. Keep them gitignored and excluded from publish, pack and
   Android output; do not link the server's root settings into the voice client.
-- tutorizr is a subject-agnostic tutor on the Agentizr agent runtime; the German language tutor is
-  only the first example. Keep subject-specific wording out of the host, channels, voice path and
-  documentation; only the learner tool set may model a subject family, and it says so explicitly.
+- tutorizr is a language-agnostic language-learning app powered by realtime AI models through
+  the Agentizr agent runtime; German is only the first example. Keep language and curriculum
+  in the tutor definition, not hardcoded in the host or voice path. CEFR proficiency, vocabulary
+  practice and language-mistake tracking are intentional learner-tool concepts.
 - tutorizr is a Comms host for one Agent Runtime tenant. It owns the tutor's MCP tools and its
   learner store; the Agent Runtime owns definitions, providers, sessions and credentials.
 - Keep the tutor's teaching behaviour in its Agent Runtime definition, not in host code. Tools
