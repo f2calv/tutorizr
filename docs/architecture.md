@@ -163,6 +163,19 @@ tenant, issuer and user identity, active definition and expiry. A missing, forei
 or definition-incompatible conversation is an explicit conflict, never a silently fresh session.
 New replaces the device's last reference after successful setup; older server projections expire
 normally. The local transcript display remains transient and is not restored from the server.
+It retains the last 40 displayed utterances as theme-aware chat bubbles: learner bubbles and text
+align right in green; tutor bubbles and text align left. Adjacent bubbles have an eight-unit vertical
+gap. Visible speaker subtitles are omitted; screen readers and copied text retain the speaker.
+Each bubble has a compact, theme-aware copy icon with a 48-unit tap target and a speaker-specific
+screen-reader label.
+Individual messages or the currently displayed conversation can be copied explicitly to the system clipboard;
+the app does not log the text or save it to device storage. Clipboard retention and synchronization
+are controlled by the operating system, not the app.
+
+The Tutor page shows concise sign-in, microphone, runtime and audio-connection progress without
+exposing diagnostic payloads. Its monotonic elapsed timer begins when WebRTC reports connected,
+includes temporary reconnects, freezes when hang-up starts and resets for every New or Resume
+connection. It is elapsed call time, not measured learner/tutor speaking time or a server countdown.
 
 Knowledge-enabled calls do **not** support retention or Resume: replaying previous grounded
 answers could bypass evidence expiry or revocation. They remain ordinary non-retained calls with

@@ -5,7 +5,6 @@
              Title="Settings">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="12">
-            <Label Text="Tutor settings" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                 <Switch x:Name="RememberConversationSwitch" Toggled="OnRetentionToggled"
                         SemanticProperties.Description="Allow 24-hour conversation resume for new calls" />

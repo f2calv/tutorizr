@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:CasCap.Models"
              x:Class="CasCap.Pages.ConversationPage"
              Title="Tutor">
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="24" RowSpacing="16">
-        <Label Text="Live tutor" Style="{StaticResource PageTitleLabelStyle}" SemanticProperties.HeadingLevel="Level1" />
-        <VerticalStackLayout Grid.Row="1" Spacing="4">
-            <Label x:Name="StateLabel" Style="{StaticResource SectionTitleLabelStyle}" />
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="CopyConversationItem" Text="Copy conversation"
+                     Order="Secondary" Clicked="OnCopyConversationClicked" IsEnabled="False" />
+    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24" RowSpacing="16">
+        <VerticalStackLayout Spacing="4">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Label x:Name="StateLabel" Style="{StaticResource SectionTitleLabelStyle}" />
+                <Label Grid.Column="1" x:Name="ElapsedLabel" IsVisible="False"
+                       VerticalOptions="Center" SemanticProperties.Description="Elapsed call time" />
+            </Grid>
             <HorizontalStackLayout x:Name="MicrophoneIndicator" Spacing="8" IsVisible="False">
                 <Ellipse x:Name="MicrophoneDot" WidthRequest="14" HeightRequest="14" Fill="Gray" VerticalOptions="Center" />
                 <Label x:Name="MicrophoneLabel" VerticalOptions="Center" />
@@ -24,7 +32,7 @@
                 <Label x:Name="SpeechPaceLabel" />
             </VerticalStackLayout>
         </VerticalStackLayout>
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
             <Button x:Name="StartButton" Text="New" Clicked="OnStartClicked"
                     SemanticProperties.Hint="Signs you in if needed and starts a live call with the tutor" />
             <Button Grid.Column="1" x:Name="ResumeButton" Text="Resume" Clicked="OnResumeClicked"
@@ -34,16 +42,58 @@
             <Button Grid.Column="3" x:Name="EndButton" Text="End" Clicked="OnEndClicked"
                     SemanticProperties.Hint="Ends the call and releases the microphone" />
         </Grid>
-        <CollectionView Grid.Row="3" x:Name="TranscriptView" SelectionMode="None"
+        <CollectionView Grid.Row="2" x:Name="TranscriptView" SelectionMode="None"
                         ItemsUpdatingScrollMode="KeepLastItemInView">
             <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                    <Label Text="{Binding .}" Padding="0,6" />
+                <DataTemplate x:DataType="models:TranscriptMessage">
+                    <Grid ColumnDefinitions="*,5*,*">
+                        <Border Grid.ColumnSpan="2" Margin="0,4" Padding="12" StrokeThickness="0"
+                                HorizontalOptions="Start"
+                                BackgroundColor="{AppThemeBinding Light={StaticResource TutorBubbleLight}, Dark={StaticResource TutorBubbleDark}}">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12" />
+                            </Border.StrokeShape>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsLearner}" Value="True">
+                                    <Setter Property="Grid.Column" Value="1" />
+                                    <Setter Property="HorizontalOptions" Value="End" />
+                                    <Setter Property="BackgroundColor"
+                                            Value="{AppThemeBinding Light={StaticResource LearnerBubbleLight}, Dark={StaticResource LearnerBubbleDark}}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label Text="{Binding Text}" VerticalOptions="Center">
+                                    <SemanticProperties.Description>
+                                        <MultiBinding StringFormat="{}{0}: {1}">
+                                            <Binding Path="Speaker" />
+                                            <Binding Path="Text" />
+                                        </MultiBinding>
+                                    </SemanticProperties.Description>
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsLearner}" Value="True">
+                                            <Setter Property="HorizontalTextAlignment" Value="End" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                                <ImageButton Grid.Column="1" Clicked="OnCopyMessageClicked"
+                                        Source="{AppThemeBinding Light=copy_light.png, Dark=copy_dark.png}"
+                                        BackgroundColor="Transparent" BorderWidth="0"
+                                        WidthRequest="48" HeightRequest="48" Padding="14"
+                                        MinimumWidthRequest="48" MinimumHeightRequest="48"
+                                        VerticalOptions="Start"
+                                        SemanticProperties.Hint="Copies this message to the clipboard">
+                                    <SemanticProperties.Description>
+                                        <Binding Path="Speaker" StringFormat="Copy {0} message" />
+                                    </SemanticProperties.Description>
+                                </ImageButton>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
         <!-- Hosts the WebRTC media engine; it has no visible content. -->
-        <HybridWebView Grid.Row="4" x:Name="CallView" HeightRequest="1"
+        <HybridWebView Grid.Row="3" x:Name="CallView" HeightRequest="1"
                        RawMessageReceived="OnCallViewRawMessageReceived"
                        WebViewInitialized="OnCallViewInitialized" />
     </Grid>

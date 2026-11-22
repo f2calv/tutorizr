@@ -12,4 +12,8 @@
     <Color x:Key="TextDark">#F4EFF4</Color>
     <Color x:Key="SecondaryTextLight">#49454F</Color>
     <Color x:Key="SecondaryTextDark">#CAC4D0</Color>
+    <Color x:Key="TutorBubbleLight">#F0EDF4</Color>
+    <Color x:Key="TutorBubbleDark">#302D35</Color>
+    <Color x:Key="LearnerBubbleLight">#DFF3EE</Color>
+    <Color x:Key="LearnerBubbleDark">#173D35</Color>
 </ResourceDictionary>

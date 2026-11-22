@@ -31,7 +31,9 @@ public sealed partial class ConversationPage : ContentPage
     private readonly ILogger<ConversationPage> _logger;
     private readonly VoiceCallPreferences _voicePreferences;
     private readonly CallDiagnosticLog _diagnosticLog;
-    private readonly ObservableCollection<string> _transcript = [];
+    private readonly ObservableCollection<TranscriptMessage> _transcript = [];
+    private readonly Stopwatch _callClock = new();
+    private readonly IDispatcherTimer _elapsedTimer;
     private TutorCallState _state = TutorCallState.Disconnected;
     private bool _muted;
     private bool _hearing;
@@ -61,6 +63,9 @@ public sealed partial class ConversationPage : ContentPage
         _logger = logger;
         _voicePreferences = voicePreferences;
         _diagnosticLog = diagnosticLog;
+        _elapsedTimer = Dispatcher.CreateTimer();
+        _elapsedTimer.Interval = TimeSpan.FromSeconds(1);
+        _elapsedTimer.Tick += (_, _) => UpdateElapsedTime();
         TranscriptView.ItemsSource = _transcript;
         Render();
     }
@@ -124,9 +129,13 @@ public sealed partial class ConversationPage : ContentPage
         var stage = "Sign-in";
         var outcome = "Setup failed";
         Exception? error = null;
-        DetailLabel.Text = string.Empty;
+        StopCallTimer();
+        _callClock.Reset();
+        ElapsedLabel.IsVisible = false;
+        DetailLabel.Text = "Signing in...";
         if (!resume)
             _transcript.Clear();
+        CopyConversationItem.IsEnabled = _transcript.Count > 0;
         _muted = false;
         _speechPaceGeneration++;
         _changingSpeechPace = false;
@@ -157,6 +166,7 @@ public sealed partial class ConversationPage : ContentPage
                 return;
             }
             stage = "Microphone and audio offer";
+            DetailLabel.Text = "Opening microphone...";
             if (await CallView.InvokeJavaScriptAsync("createOffer", CallPageJsonContext.Default.String)
                 .WaitAsync(MediaTimeout, timeout.Token) is not { } offer)
             {
@@ -164,6 +174,7 @@ public sealed partial class ConversationPage : ContentPage
                 return;
             }
             stage = "Agent Runtime call setup";
+            DetailLabel.Text = resume ? "Resuming the conversation..." : "Connecting to the tutor...";
             var answer = await _callService.StartAsync(offer, timeout.Token, resume, retain);
             timeout.Token.ThrowIfCancellationRequested();
             if (answer is null)
@@ -173,6 +184,7 @@ public sealed partial class ConversationPage : ContentPage
                 return;
             }
             stage = "Audio connection";
+            DetailLabel.Text = "Connecting audio...";
             if (!await CallView.InvokeJavaScriptAsync(
                 "acceptAnswer", CallPageJsonContext.Default.Boolean, [answer], [CallPageJsonContext.Default.String])
                 .WaitAsync(MediaTimeout, timeout.Token))
@@ -182,6 +194,7 @@ public sealed partial class ConversationPage : ContentPage
             }
             timeout.Token.ThrowIfCancellationRequested();
             SetState(TutorCallState.Listening);
+            DetailLabel.Text = _callClock.IsRunning ? string.Empty : "Waiting for audio connection...";
             outcome = "Setup completed";
         }
         catch (OptionsValidationException ex)
@@ -234,10 +247,26 @@ public sealed partial class ConversationPage : ContentPage
     }
 
     private async void OnCopyErrorClicked(object? sender, EventArgs e)
+        => await CopyTextAsync(DetailLabel.Text);
+
+    private async void OnCopyMessageClicked(object? sender, EventArgs e)
+    {
+        if (sender is ImageButton { BindingContext: TranscriptMessage message })
+            await CopyTextAsync($"{message.Speaker}: {message.Text}");
+    }
+
+    private async void OnCopyConversationClicked(object? sender, EventArgs e)
+    {
+        if (_transcript.Count > 0)
+            await CopyTextAsync(string.Join(Environment.NewLine + Environment.NewLine,
+                _transcript.Select(message => $"{message.Speaker}: {message.Text}")));
+    }
+
+    private async Task CopyTextAsync(string text)
     {
         try
         {
-            await Clipboard.Default.SetTextAsync(DetailLabel.Text);
+            await Clipboard.Default.SetTextAsync(text);
         }
         catch (InvalidOperationException)
         {
@@ -342,6 +371,14 @@ public sealed partial class ConversationPage : ContentPage
             case "state" when _state is TutorCallState.Listening or TutorCallState.Speaking
                 or TutorCallState.Reconnecting or TutorCallState.Connecting:
                 var value = root.GetProperty("value").GetString();
+                if (value == "connected" && !_callClock.IsRunning)
+                {
+                    _callClock.Start();
+                    _elapsedTimer.Start();
+                    ElapsedLabel.IsVisible = true;
+                    UpdateElapsedTime();
+                    DetailLabel.Text = string.Empty;
+                }
                 if (value == "failed")
                     await EndCallAsync(connectionLost: true);
                 else if (_state == TutorCallState.Connecting)
@@ -370,6 +407,7 @@ public sealed partial class ConversationPage : ContentPage
 
     private async Task EndCallCoreAsync(bool connectionLost)
     {
+        StopCallTimer();
         var wasActive = _state is TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Connecting
             or TutorCallState.Reconnecting;
         SetState(TutorCallState.Disconnecting);
@@ -407,6 +445,7 @@ public sealed partial class ConversationPage : ContentPage
 
     private async Task FailAsync(string message)
     {
+        StopCallTimer();
         UpdateKeepAwake(ending: true);
         await HangUpViewAsync();
         await _callService.EndAsync(CancellationToken.None);
@@ -431,7 +470,26 @@ public sealed partial class ConversationPage : ContentPage
     {
         if (_transcript.Count == MaxTranscriptLines)
             _transcript.RemoveAt(0);
-        _transcript.Add($"{speaker}: {text}");
+        _transcript.Add(new TranscriptMessage
+        {
+            Speaker = speaker,
+            Text = text,
+            IsLearner = speaker == "You",
+        });
+        CopyConversationItem.IsEnabled = true;
+    }
+
+    private void StopCallTimer()
+    {
+        _elapsedTimer.Stop();
+        _callClock.Stop();
+        UpdateElapsedTime();
+    }
+
+    private void UpdateElapsedTime()
+    {
+        var elapsed = _callClock.Elapsed;
+        ElapsedLabel.Text = $"Call {(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}";
     }
 
     private void SetState(TutorCallState state)

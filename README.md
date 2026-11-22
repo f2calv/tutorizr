@@ -153,6 +153,10 @@ The separate communications pipeline can disclose content to the operator's moni
 
 The live voice client streams microphone audio to Azure OpenAI only while a session is active and
 shows transcripts transiently. It neither logs nor stores audio or transcripts on the device.
+The Tutor page distinguishes learner and tutor messages, shows concise connection progress and an
+elapsed timer from audio connection until hang-up (including reconnecting time). Use **Copy** on a
+message or **Copy conversation** in the page menu to copy the currently displayed text. Clipboard
+content leaves the app's transient transcript boundary; clear it when using a shared device.
 
 During a call, **Speech pace** offers Slow (0.8x), Normal (1.0x), and Fast (1.2x).
 Tutorizr highlights your selection and requests the change between replies. If the provider
