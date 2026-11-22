@@ -85,28 +85,68 @@ public sealed partial class ConversationPage : ContentPage
         }
     }
 
-    /// <summary>Updates the window's foreground status without treating tab navigation as a hang-up.</summary>
+    /// <summary>Pauses microphone transmission during brief app switches without ending the current reply.</summary>
     /// <param name="foreground">Whether this app window is active.</param>
-    public void SetForeground(bool foreground)
+    public async Task SetForegroundAsync(bool foreground)
     {
+        var changed = _foreground != foreground;
         _foreground = foreground;
         UpdateKeepAwake();
+        if (!changed || _authenticating)
+            return;
+        if (!foreground && _state == TutorCallState.Connecting)
+        {
+            await FinishSuspendingAsync();
+            return;
+        }
+        if (_state is not (TutorCallState.Listening or TutorCallState.Speaking or TutorCallState.Reconnecting))
+            return;
+        try
+        {
+            if (!await CallView.InvokeJavaScriptAsync(
+                "setForeground", CallPageJsonContext.Default.Boolean, [foreground], [CallPageJsonContext.Default.Boolean])
+                .WaitAsync(HangUpTimeout))
+                await FinishSuspendingAsync();
+        }
+        catch (Exception ex) when (ex is TimeoutException or ObjectDisposedException or InvalidOperationException)
+        {
+            if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Warning))
+                _logger.LogWarning("{ClassName} could not confirm the foreground microphone transition",
+                    nameof(ConversationPage));
+            await FinishSuspendingAsync();
+        }
     }
 
-    /// <summary>Ends media when the window stops; resumption always requires an explicit learner action.</summary>
+    /// <summary>Ends media immediately when the window is destroyed.</summary>
     public async Task SuspendAsync()
     {
-        SetForeground(false);
+        _foreground = false;
+        UpdateKeepAwake();
         // The system browser must be allowed to finish sign-in before the call opens its microphone.
         if (!_authenticating && _state is TutorCallState.Connecting or TutorCallState.Listening
             or TutorCallState.Speaking or TutorCallState.Reconnecting or TutorCallState.Disconnecting)
         {
-            await EndCallAsync();
-            DetailLabel.Text += _callService.CanResume
-                ? " App is inactive. Press Resume when you return to continue your conversation."
-                : " App is inactive. Start a new call when you return.";
-            SetState(TutorCallState.Suspended);
+            await FinishSuspendingAsync();
         }
+    }
+
+    /// <summary>Distinguishes an Android device lock from a brief switch to another app.</summary>
+    public Task StopWindowAsync()
+    {
+        var locked = false;
+        CheckDeviceLocked(ref locked);
+        return locked ? SuspendAsync() : SetForegroundAsync(false);
+    }
+
+    partial void CheckDeviceLocked(ref bool locked);
+
+    private async Task FinishSuspendingAsync()
+    {
+        await EndCallAsync();
+        DetailLabel.Text += _callService.CanResume
+            ? " App is inactive. Press Resume when you return to continue your conversation."
+            : " App is inactive. Start a new call when you return.";
+        SetState(TutorCallState.Suspended);
     }
 
     private async void OnStartClicked(object? sender, EventArgs e)
@@ -135,7 +175,7 @@ public sealed partial class ConversationPage : ContentPage
         DetailLabel.Text = "Signing in...";
         if (!resume)
             _transcript.Clear();
-        CopyConversationItem.IsEnabled = _transcript.Count > 0;
+        UpdateTranscriptActions();
         _muted = false;
         _speechPaceGeneration++;
         _changingSpeechPace = false;
@@ -252,14 +292,26 @@ public sealed partial class ConversationPage : ContentPage
     private async void OnCopyMessageClicked(object? sender, EventArgs e)
     {
         if (sender is ImageButton { BindingContext: TranscriptMessage message })
-            await CopyTextAsync($"{message.Speaker}: {message.Text}");
+            await CopyTextAsync(message.Text);
     }
 
     private async void OnCopyConversationClicked(object? sender, EventArgs e)
     {
         if (_transcript.Count > 0)
             await CopyTextAsync(string.Join(Environment.NewLine + Environment.NewLine,
-                _transcript.Select(message => $"{message.Speaker}: {message.Text}")));
+                _transcript.Select(message => message.Text)));
+    }
+
+    private void OnClearMessagesClicked(object? sender, EventArgs e)
+    {
+        _transcript.Clear();
+        UpdateTranscriptActions();
+    }
+
+    private void UpdateTranscriptActions()
+    {
+        CopyConversationItem.IsEnabled = _transcript.Count > 0;
+        ClearMessagesItem.IsEnabled = _transcript.Count > 0;
     }
 
     private async Task CopyTextAsync(string text)
@@ -379,7 +431,9 @@ public sealed partial class ConversationPage : ContentPage
                     UpdateElapsedTime();
                     DetailLabel.Text = string.Empty;
                 }
-                if (value == "failed")
+                if (value == "suspended")
+                    await FinishSuspendingAsync();
+                else if (value == "failed")
                     await EndCallAsync(connectionLost: true);
                 else if (_state == TutorCallState.Connecting)
                     break;
@@ -476,7 +530,7 @@ public sealed partial class ConversationPage : ContentPage
             Text = text,
             IsLearner = speaker == "You",
         });
-        CopyConversationItem.IsEnabled = true;
+        UpdateTranscriptActions();
     }
 
     private void StopCallTimer()

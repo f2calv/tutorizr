@@ -14,6 +14,12 @@
         let reconnectTimer = null;
         const reconnectGraceMilliseconds = 20_000;
         let mediaGeneration = 0;
+        let callForeground = true;
+        let manuallyMuted = false;
+        let audioPlaying = false;
+        let backgroundTimer = null;
+        let backgroundDeadline = null;
+        const backgroundGraceMilliseconds = 10_000;
         let events = null;
         const activeResponses = new Set();
         let paceChange = null;
@@ -78,10 +84,15 @@
                     notify({ type: 'transcript', speaker: 'tutor', text: event.transcript ?? '' });
                     break;
                 case 'output_audio_buffer.started':
+                    audioPlaying = true;
                     notify({ type: 'state', value: 'speaking' });
                     break;
                 case 'output_audio_buffer.stopped':
                 case 'output_audio_buffer.cleared':
+                    audioPlaying = false;
+                    if (!finishBackgroundIfDue())
+                        notify({ type: 'state', value: 'listening' });
+                    break;
                 case 'input_audio_buffer.speech_started':
                     notify({ type: 'state', value: 'listening' });
                     break;
@@ -207,7 +218,39 @@
         }
 
         function setMuted(muted) {
-            microphone?.getAudioTracks().forEach(track => { track.enabled = !muted; });
+            manuallyMuted = muted;
+            updateMicrophone();
+            return true;
+        }
+
+        function updateMicrophone() {
+            microphone?.getAudioTracks().forEach(track => { track.enabled = callForeground && !manuallyMuted; });
+        }
+
+        function finishBackgroundIfDue() {
+            if (callForeground || backgroundDeadline === null || Date.now() < backgroundDeadline || audioPlaying)
+                return false;
+            notify({ type: 'state', value: 'suspended' });
+            hangUp();
+            return true;
+        }
+
+        function setForeground(foreground) {
+            if (peer === null)
+                return false;
+            // Enforce the deadline on return too, in case Android delayed a background timer.
+            if (foreground && finishBackgroundIfDue())
+                return false;
+            callForeground = foreground;
+            updateMicrophone();
+            if (foreground) {
+                clearTimeout(backgroundTimer);
+                backgroundTimer = null;
+                backgroundDeadline = null;
+            } else if (backgroundDeadline === null) {
+                backgroundDeadline = Date.now() + backgroundGraceMilliseconds;
+                backgroundTimer = setTimeout(finishBackgroundIfDue, backgroundGraceMilliseconds);
+            }
             return true;
         }
 
@@ -216,6 +259,12 @@
             finishPaceChange(paceChange?.sent ? 'unconfirmed' : 'not-sent');
             activeResponses.clear();
             events = null;
+            clearTimeout(backgroundTimer);
+            backgroundTimer = null;
+            backgroundDeadline = null;
+            callForeground = true;
+            manuallyMuted = false;
+            audioPlaying = false;
             clearTimeout(reconnectTimer);
             reconnectTimer = null;
             meter?.stop();

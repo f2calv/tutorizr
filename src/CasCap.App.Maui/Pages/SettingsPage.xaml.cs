@@ -92,7 +92,9 @@ public sealed partial class SettingsPage : ContentPage
         {
             var capabilities = await _capabilityClientFactory().GetAsync(cancellationToken);
             return capabilities is null
-                ? "No capability information. Check the tutor name and whether the runtime supports this check."
+                ? "The capability endpoint returned HTTP 404. Check the saved tutor name and runtime address, "
+                    + "including any path prefix. The runtime may not support this check. "
+                    + "If you changed settings after connecting, reopen the app first."
                 : $"Voice: {(capabilities.VoiceEnabled ? "configured" : "not configured")}\n"
                     + $"Knowledge tools for voice: {(capabilities.KnowledgeToolsEnabled ? "enabled" : "disabled")}\n"
                     + $"Retention policy: {(capabilities.RetentionAllowed ? "allowed by the runtime configuration" : "not allowed")}\n"

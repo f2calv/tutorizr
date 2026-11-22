@@ -11,8 +11,8 @@ public sealed class VoiceCapabilityClient(HttpClient httpClient, IOptions<TutorC
     {
         var agent = Uri.EscapeDataString(config.Value.AgentName!);
         // TODO: Use the shared route suffix when it ships in the pinned Agentizr package.
-        var path = AgentRuntimeRoutes.AgentGroup.Replace("{agentName}", agent, StringComparison.Ordinal)
-            + "/realtime/capabilities";
+        var path = (AgentRuntimeRoutes.AgentGroup.Replace("{agentName}", agent, StringComparison.Ordinal)
+            + "/realtime/capabilities").TrimStart('/');
         using var response = await httpClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (response.StatusCode is HttpStatusCode.NotFound)
             return null;

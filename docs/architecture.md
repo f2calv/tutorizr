@@ -96,14 +96,17 @@ package.
 | Learner ownership | Requires authenticated runtime assertion and qualifies every key; request-scoped | `Services/LearnerMcpContext.cs` | Opaque learner ID, qualified keys | Authenticated HTTP context |
 | Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
-| Voice call page | Signs in before media starts, manages foreground keep-awake and stop/resume, exchanges SDP and displays transient transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs`, `TutorApp.xaml.cs` | New, Resume, Mute and End | Agent Runtime realtime call methods, `MsalAccessTokenProvider`, window lifecycle and MAUI `DeviceDisplay` |
+| Voice call page | Signs in before media starts, manages foreground keep-awake and stop/resume, exchanges SDP and displays transient transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs`, `TutorApp.xaml.cs`, `Views/TranscriptMessageLayout.cs`, `Platforms/Android/TranscriptMessageLayout.Android.cs` | New, Resume, Mute and End | Agent Runtime realtime call methods, `MsalAccessTokenProvider`, window lifecycle and MAUI `DeviceDisplay` |
 | Call media | Opens the microphone, plays tutor audio, forwards transcripts and allows twenty seconds for a transient disconnect to recover | `src/CasCap.App.Maui/Resources/Raw/wwwroot/index.html` | `createOffer`, `acceptAnswer`, `setMuted`, `hangUp` | Platform microphone permission and WebRTC |
 
 ## Voice Call Lifecycle
 
 Foreground calls keep the screen awake without changing the device timeout setting. Settings-tab
-navigation preserves the call; actually backgrounding or manually locking the app ends media and
-requires an explicit New or Resume action on return, never an automatic microphone restart.
+navigation preserves the call. Switching to another app immediately pauses microphone transmission
+and retains the existing connection for a ten-second return grace period. A tutor reply already
+playing can finish before expiry closes media; this is playback completion, not sentence alignment.
+Returning during that interval restores transmission unless manually muted. Android device locking
+or window destruction still ends media and requires explicit New or Resume.
 
 ```mermaid
 stateDiagram-v2
@@ -113,10 +116,12 @@ stateDiagram-v2
     Connecting --> Error: permission, sign-in, provider or setup timeout
     Connecting --> Disconnecting: End or app stopped after sign-in
     Active --> Active: Tutor or Settings tab, Mute or Unmute
+    Active --> Active: brief app switch, microphone paused then restored
     Active --> Reconnecting: WebRTC disconnected
     Reconnecting --> Active: same peer recovers within 20 seconds
     Reconnecting --> Disconnecting: 20 seconds elapsed or peer failed
-    Active --> Disconnecting: End, peer failed or app stopped
+    Active --> Disconnecting: End, peer failed, device lock or window destroyed
+    Active --> Disconnecting: background grace elapsed and playback finished
     Disconnecting --> Disconnected: release microphone and report call summary
     Disconnecting --> Suspended: background or manual lock
     Suspended --> Connecting: foreground, then explicit New or Resume
@@ -138,14 +143,20 @@ background transition does not cancel sign-in. Switching tabs does not call hang
 | Recovery within the deadline | Returns to Listening; it neither creates a call nor replays history |
 | Terminal failure or elapsed deadline | Ends the runtime call, releases media, reports the lost connection and enables New or Resume |
 | End during setup | Cancels setup, waits for it to settle and ends any call created during the race |
-| App stopped or manually locked | Releases keep-awake, closes media, requests runtime hang-up and leaves an explicit resume opportunity |
-| Reactivation | Does not reopen the microphone; the learner presses Resume or New |
+| Switch to another app | Releases keep-awake and disables microphone transmission, preserving manual mute and the current reply |
+| Brief return | Keeps the same call, timer and WebRTC connection; restores transmission only if not manually muted |
+| Ten-second grace expires | Closes media once current playback finishes, requests runtime hang-up and enables New or Resume |
+| Android device locked or window destroyed | Ends media immediately and leaves an explicit resume opportunity |
+| Reactivation after hang-up | Does not reopen the microphone; the learner presses Resume or New |
 | Settings tab | Does not end the call; updated connection settings apply to a subsequent call |
 | App killed | No client shutdown callback is guaranteed; the runtime's existing call ceiling/control-loss policy still applies |
 
 Hang-up requests have a ten-second client deadline. If the network is unavailable, the UI reports
 that the connection was lost; closing local media does not prove that the server received the
 request. Provider/control loss or the runtime's existing maximum duration remains the fallback.
+Background grace is best-effort continuity, not an Android foreground service: the operating system
+may suspend the WebView, stop playback or kill the process. The deadline is checked on return as
+well as by a timer, so a delayed timer cannot revive an expired idle call.
 
 ### Optional Conversation Continuity
 
@@ -165,12 +176,17 @@ New replaces the device's last reference after successful setup; older server pr
 normally. The local transcript display remains transient and is not restored from the server.
 It retains the last 40 displayed utterances as theme-aware chat bubbles: learner bubbles and text
 align right in green; tutor bubbles and text align left. Adjacent bubbles have an eight-unit vertical
-gap. Visible speaker subtitles are omitted; screen readers and copied text retain the speaker.
-Each bubble has a compact, theme-aware copy icon with a 48-unit tap target and a speaker-specific
-screen-reader label.
+gap. Visible speaker subtitles are omitted; screen readers retain the speaker. Copying returns only
+message text, without a You/Tutor prefix. Each bubble has a compact, theme-aware copy icon with a
+48-unit tap target and a speaker-specific screen-reader label. Native labels reserve space beside
+the icon only for the opening lines; remaining text flows underneath at full bubble width.
+Text fitting uses a detached native measurement label to avoid invalidating the bubble during
+prefix measurements. On Android, its layout parameters are initialized before measured text changes.
 Individual messages or the currently displayed conversation can be copied explicitly to the system clipboard;
 the app does not log the text or save it to device storage. Clipboard retention and synchronization
 are controlled by the operating system, not the app.
+**Clear messages** clears only the transient displayed bubbles. It neither interrupts the current
+call nor discards the device's Resume reference or deletes server-retained context.
 
 The Tutor page shows concise sign-in, microphone, runtime and audio-connection progress without
 exposing diagnostic payloads. Its monotonic elapsed timer begins when WebRTC reports connected,
@@ -185,6 +201,8 @@ In **Settings**, **Check tutor capabilities** asks a supporting Agentizr runtime
 definition's voice, document knowledge and retention flags. It uses the existing voice sign-in and
 does not start a call, grant knowledge access, or check whether a particular conversation can resume.
 If the runtime does not support the lookup, the app leaves the capability status unknown.
+The lookup preserves any runtime URL path prefix, matching voice-call routing. HTTP 404 is reported
+explicitly rather than being displayed as an empty capability list.
 
 The **Technical Log** tab shows the last 25 call setup outcomes for the current app session,
 including the mode, stage, duration and HTTP status when available. It can be copied or cleared.

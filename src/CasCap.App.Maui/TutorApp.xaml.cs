@@ -21,9 +21,9 @@ public sealed partial class TutorApp : Application
         var conversation = _serviceProvider.GetRequiredService<ConversationPage>();
         var window = new Window(new AppShell(conversation, _serviceProvider.GetRequiredService<SettingsPage>(),
             _serviceProvider.GetRequiredService<TechnicalLogPage>()));
-        window.Activated += (_, _) => conversation.SetForeground(true);
-        window.Deactivated += (_, _) => conversation.SetForeground(false);
-        window.Stopped += async (_, _) => await conversation.SuspendAsync();
+        window.Activated += async (_, _) => await conversation.SetForegroundAsync(true);
+        window.Deactivated += async (_, _) => await conversation.SetForegroundAsync(false);
+        window.Stopped += async (_, _) => await conversation.StopWindowAsync();
         window.Destroying += async (_, _) => await conversation.SuspendAsync();
         return window;
     }

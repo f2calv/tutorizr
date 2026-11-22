@@ -1,3 +1,4 @@
+using Android.App;
 using Android.Webkit;
 using Microsoft.Maui.ApplicationModel;
 
@@ -5,6 +6,14 @@ namespace CasCap.Pages;
 
 public sealed partial class ConversationPage
 {
+    partial void CheckDeviceLocked(ref bool locked)
+    {
+        if (Android.App.Application.Context.GetSystemService(Android.Content.Context.KeyguardService)
+            is not KeyguardManager keyguard)
+            throw new InvalidOperationException("Android device lock status is unavailable.");
+        locked = keyguard.IsKeyguardLocked;
+    }
+
     partial void AllowMicrophone(WebViewInitializedEventArgs e)
     {
         if (e.PlatformArgs?.Sender is not { } webView)

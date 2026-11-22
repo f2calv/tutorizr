@@ -17,10 +17,12 @@ tests use a temporary loopback host, synthetic Basic credentials and an offline 
 | [`TutorClientConfigTests`](Tests/Unit/TutorClientConfigTests.cs) | 2 | 6 | `Authentication` |
 | [`LearnerMcpContextTests`](Tests/Unit/LearnerMcpContextTests.cs) | 3 | 7 | `Authentication` |
 | [`LearnerMcpPersistenceTests`](Tests/Integration/LearnerMcpPersistenceTests.cs) | 2 | 2 | `Integration` |
-| **Total** | **22** | **37** | |
+| [`TranscriptTextFlowTests`](Tests/Unit/TranscriptTextFlowTests.cs) | 4 | 5 | `Layout` |
+| [`VoiceCapabilityClientTests`](Tests/Unit/VoiceCapabilityClientTests.cs) | 1 | 2 | `Routing` |
+| **Total** | **27** | **44** | |
 
-These are source-declared counts, not execution results. Eight theories expand through 23
-`InlineData` rows; the other fourteen methods are facts. There are no member/class data providers.
+These are source-declared counts, not execution results. Ten theories expand through 27
+`InlineData` rows; the other seventeen methods are facts. There are no member/class data providers.
 
 ## Traits
 
@@ -31,6 +33,8 @@ These are source-declared counts, not execution results. Eight theories expand t
 | `Integration` | Fresh real MCP clients, per-login Redis command isolation and authentication failure without learner access |
 | `Scheduling` | Leitner box promotion, reset and term normalisation |
 | `Tools` | MCP tool behaviour against an in-memory store, and pinned tool hints |
+| `Layout` | Lossless word, paragraph and Unicode boundaries for floating copy-icon text |
+| `Routing` | Capability requests preserve the configured runtime URL path prefix |
 
 ## Skipped Tests
 
@@ -77,6 +81,14 @@ delivery, deployed runtime policy or speech providers. Live two-call verificatio
 The project links the platform-neutral MAUI configuration source to verify scope handling without
 MAUI workloads or MSAL sign-in. It does not verify live tokens, consent or interactive authentication.
 Focused verification passed all six `TutorClientConfigTests` cases, with zero failures or skips.
+Linked voice sources also test capability routing with a fake HTTP handler and floating-text splits
+with a deterministic measurement callback. These do not prove native font measurement, screen-reader
+behavior, Android background audio, clipboard handling or deployed endpoint responses.
+Native regression check for [issue #26](https://github.com/f2calv/tutorizr/issues/26): on Android,
+append a first synthetic learner message and a long tutor response, then repeat after relaunch with
+enlarged system fonts. Verify that the process remains alive and both messages render, scrolling
+back to the first message when necessary. This exercises the detached measurement label's native
+layout parameters; the platform-neutral text-flow tests cannot detect that failure.
 The MAUI Debug Android and Windows targets also built with zero warnings/errors. No sign-in,
 client installation or inference was performed.
 
@@ -94,5 +106,7 @@ Tests/
     ├── LearnerMcpContextTests.cs
     ├── TutorMcpQueryServiceTests.cs
     ├── TutorMcpToolAnnotationTests.cs
+    ├── TranscriptTextFlowTests.cs
+    ├── VoiceCapabilityClientTests.cs
     └── VocabularyScheduleTests.cs
 ```

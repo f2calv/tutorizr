@@ -155,8 +155,13 @@ The live voice client streams microphone audio to Azure OpenAI only while a sess
 shows transcripts transiently. It neither logs nor stores audio or transcripts on the device.
 The Tutor page distinguishes learner and tutor messages, shows concise connection progress and an
 elapsed timer from audio connection until hang-up (including reconnecting time). Use **Copy** on a
-message or **Copy conversation** in the page menu to copy the currently displayed text. Clipboard
+message or **Copy conversation** in the page menu to copy text without speaker prefixes.
+**Clear messages** clears only displayed bubbles, not the ongoing call or retained Resume context. Clipboard
 content leaves the app's transient transcript boundary; clear it when using a shared device.
+Brief app switches pause microphone transmission and keep the connection for a ten-second return
+grace period, allowing current tutor playback to finish. Returning in time preserves the call and
+manual mute state; device locking still ends the call. Background audio remains subject to Android
+process and WebView restrictions, not a guaranteed background-call service.
 
 During a call, **Speech pace** offers Slow (0.8x), Normal (1.0x), and Fast (1.2x).
 Tutorizr highlights your selection and requests the change between replies. If the provider

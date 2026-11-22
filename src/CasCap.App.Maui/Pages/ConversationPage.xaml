@@ -2,11 +2,14 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:CasCap.Models"
+             xmlns:views="clr-namespace:CasCap.Views"
              x:Class="CasCap.Pages.ConversationPage"
              Title="Tutor">
     <ContentPage.ToolbarItems>
         <ToolbarItem x:Name="CopyConversationItem" Text="Copy conversation"
                      Order="Secondary" Clicked="OnCopyConversationClicked" IsEnabled="False" />
+        <ToolbarItem x:Name="ClearMessagesItem" Text="Clear messages"
+                     Order="Primary" Clicked="OnClearMessagesClicked" IsEnabled="False" />
     </ContentPage.ToolbarItems>
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24" RowSpacing="16">
         <VerticalStackLayout Spacing="4">
@@ -61,32 +64,7 @@
                                             Value="{AppThemeBinding Light={StaticResource LearnerBubbleLight}, Dark={StaticResource LearnerBubbleDark}}" />
                                 </DataTrigger>
                             </Border.Triggers>
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                <Label Text="{Binding Text}" VerticalOptions="Center">
-                                    <SemanticProperties.Description>
-                                        <MultiBinding StringFormat="{}{0}: {1}">
-                                            <Binding Path="Speaker" />
-                                            <Binding Path="Text" />
-                                        </MultiBinding>
-                                    </SemanticProperties.Description>
-                                    <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsLearner}" Value="True">
-                                            <Setter Property="HorizontalTextAlignment" Value="End" />
-                                        </DataTrigger>
-                                    </Label.Triggers>
-                                </Label>
-                                <ImageButton Grid.Column="1" Clicked="OnCopyMessageClicked"
-                                        Source="{AppThemeBinding Light=copy_light.png, Dark=copy_dark.png}"
-                                        BackgroundColor="Transparent" BorderWidth="0"
-                                        WidthRequest="48" HeightRequest="48" Padding="14"
-                                        MinimumWidthRequest="48" MinimumHeightRequest="48"
-                                        VerticalOptions="Start"
-                                        SemanticProperties.Hint="Copies this message to the clipboard">
-                                    <SemanticProperties.Description>
-                                        <Binding Path="Speaker" StringFormat="Copy {0} message" />
-                                    </SemanticProperties.Description>
-                                </ImageButton>
-                            </Grid>
+                            <views:TranscriptMessageLayout CopyClicked="OnCopyMessageClicked" />
                         </Border>
                     </Grid>
                 </DataTemplate>

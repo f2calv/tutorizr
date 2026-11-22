@@ -18,6 +18,7 @@ function harness() {
     const remote = {};
     const context = vm.createContext({
         console,
+        Date: class extends Date { static now() { return now; } },
         document: { getElementById: () => remote },
         window: { HybridWebView: { SendRawMessage: json => messages.push(JSON.parse(json)) } },
         navigator: { mediaDevices: { getUserMedia: async () => {
@@ -71,6 +72,7 @@ function harness() {
             for (const [id, timer] of timers)
                 if (timer.at <= now) { timers.delete(id); timer.callback(); }
         },
+        elapseWithoutTimers(milliseconds) { now += milliseconds; },
     };
 }
 
@@ -199,4 +201,74 @@ test('late SDP completion from an ended call cannot replace or close a newer cal
     assert.equal(h.tracks[0].stopped, true);
     assert.equal(h.tracks[1].stopped, false);
     assert.notEqual(h.connections[1].connectionState, 'closed');
+});
+
+test('brief app switches mute transmission, keep playback and preserve manual mute on return', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.providerEvent({ type: 'output_audio_buffer.started' });
+    assert.equal(h.context.setForeground(false), true);
+    assert.equal(h.tracks[0].enabled, false);
+    h.advance(3_000);
+    assert.notEqual(h.connections[0].connectionState, 'closed');
+    assert.equal(h.context.setForeground(true), true);
+    assert.equal(h.tracks[0].enabled, true);
+    h.context.setMuted(true);
+    h.context.setForeground(false);
+    h.advance(3_000);
+    h.context.setForeground(true);
+    assert.equal(h.tracks[0].enabled, false);
+    h.advance(10_000);
+    assert.notEqual(h.connections[0].connectionState, 'closed');
+});
+
+test('duplicate background events cannot extend the ten-second idle grace or enable the microphone', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.context.setForeground(false);
+    h.advance(5_000);
+    h.context.setForeground(false);
+    h.context.setMuted(false);
+    assert.equal(h.tracks[0].enabled, false);
+    h.advance(4_999);
+    assert.equal(h.tracks[0].stopped, false);
+    h.advance(1);
+    assert.equal(h.tracks[0].stopped, true);
+    assert.deepEqual(h.messages.at(-1), { type: 'state', value: 'suspended' });
+});
+
+test('background expiry waits for audible playback, not response generation completion', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.providerEvent({ type: 'output_audio_buffer.started' });
+    h.context.setForeground(false);
+    h.advance(10_000);
+    h.providerEvent({ type: 'response.done', response: { id: 'reply' } });
+    assert.equal(h.tracks[0].stopped, false);
+    h.providerEvent({ type: 'output_audio_buffer.stopped' });
+    assert.equal(h.tracks[0].stopped, true);
+    assert.deepEqual(h.messages.at(-1), { type: 'state', value: 'suspended' });
+});
+
+test('returning after a delayed background timer enforces the deadline before unmuting', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.context.setForeground(false);
+    h.elapseWithoutTimers(10_000);
+    assert.equal(h.context.setForeground(true), false);
+    assert.equal(h.tracks[0].enabled, false);
+    assert.equal(h.tracks[0].stopped, true);
+});
+
+test('hang-up cancels the old background deadline before the next call', async () => {
+    const h = harness();
+    await h.context.createOffer();
+    h.context.setForeground(false);
+    h.advance(5_000);
+    h.context.hangUp();
+    await h.context.createOffer();
+    h.advance(10_000);
+    assert.equal(h.tracks[1].enabled, true);
+    assert.equal(h.tracks[1].stopped, false);
+    assert.equal(h.messages.filter(message => message.value === 'suspended').length, 0);
 });
