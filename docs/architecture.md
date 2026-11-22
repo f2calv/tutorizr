@@ -20,7 +20,7 @@ flowchart LR
     classDef person fill:#ede9fe,stroke:#6d28d9,color:#2e1065
     classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
 
-    learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway<br/>signalizr]:::external
+    admins([Administrators in a Signal group]):::person <-->|Signal| gateway[Signal gateway<br/>signalizr]:::external
     voiceLearner([Learner on a phone or PC]):::person <-->|speech| client
     subgraph tutorizr [tutorizr]
         host[Tutor host<br/>ASP.NET Core; Comms and Mcp roles]:::container
@@ -31,7 +31,7 @@ flowchart LR
     gateway -->|"gRPC deliveries"| host
     host -->|"REST replies"| gateway
     host -->|"streamed agent runs"| runtime[Agentizr agent runtime]:::external
-    runtime -->|"MCP tool calls, Basic auth"| host
+    runtime -->|"MCP, Basic auth; learner calls carry login context"| host
     host -.->|"optional transcription and speech"| speech[Speech providers]:::external
     client -->|"call setup and hang-up, delegated token"| runtime
     client <-->|"WebRTC audio and transcripts"| realtime[Azure OpenAI realtime model]:::external
@@ -41,8 +41,9 @@ flowchart LR
 The client signs the learner in through its public client registration and posts a WebRTC offer to
 Agentizr's realtime calls endpoint ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)). Agentizr
 applies the tutor definition, negotiates the call with Azure OpenAI and runs the learner tools over the
-same MCP endpoint the chat channel uses. The client never sees instructions, tool calls or provider
-credentials.
+same MCP endpoint as administrative tools. The runtime captures an opaque app-scoped login identity
+for learner calls; Signal's machine-only runs cannot access learner records. The client never sees
+instructions, tool calls or provider credentials.
 
 ## Host Components
 
@@ -63,12 +64,14 @@ flowchart TB
         tools[Learner tools<br/>seven MCP tools]:::component
         schedule[Vocabulary schedule<br/>Leitner boxes]:::component
         store[Learner store<br/>ILearnerStore]:::component
+        owner[Learner ownership<br/>authenticated request context]:::component
         comms[Comms pipeline<br/>ICommsResponder]:::packaged
         polls[Poll tools<br/>Comms role only]:::packaged
         mcp --> tools
         mcp --> polls
         tools --> schedule
         tools -->|ILearnerStore| store
+        store -->|qualify every key| owner
     end
     store --> redis[(Redis)]:::store
     comms -->|deduplication| redis
@@ -88,7 +91,8 @@ package.
 | MCP endpoint | Stateless Streamable HTTP with Basic authentication; rejects browser origins | `src/CasCap.App.Server/AppHost.WebApi.cs`, `AppHost.Endpoints.cs` | `/mcp`, `/healthz` | `ApiAuthConfig` |
 | Learner tools | Validates and bounds tool input, returns structured learner results | `Services/TutorMcpQueryService.cs`, `Models/` | Seven `[McpServerTool]` methods | `ILearnerStore`, Vocabulary schedule, `TimeProvider` |
 | Vocabulary schedule | Normalizes terms and computes Leitner review transitions | `Services/VocabularySchedule.cs` | `CreateNew`, `Review`, `Normalise` | None |
-| Learner store | Persists level, vocabulary and a bounded mistake window | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis |
+| Learner store | Persists level, vocabulary and a bounded mistake window per login | `Abstractions/ILearnerStore.cs`, `Services/RedisLearnerStore.cs` | `ILearnerStore` | Redis, learner ownership |
+| Learner ownership | Requires authenticated runtime assertion and qualifies every key; request-scoped | `Services/LearnerMcpContext.cs` | Opaque learner ID, qualified keys | Authenticated HTTP context |
 | Comms pipeline | Subscribes to the chat group, deduplicates, runs agent turns and queues replies | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` | [`ICommsResponder`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Abstractions/ICommsResponder.cs) | Signal gateway, [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.7.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs), Redis |
 | Poll tools | Creates and reads chat-group polls for the agent | `CasCap.Comms.AI` package, registered in `AppHost.Features.cs` when `Comms` is enabled | Poll `[McpServerTool]` methods | Signal gateway |
 | Voice call page | Signs in before media starts, manages foreground keep-awake and stop/resume, exchanges SDP and displays transient transcripts | `src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs`, `Services/TutorCallService.cs`, `TutorApp.xaml.cs` | New, Resume, Mute and End | Agent Runtime realtime call methods, `MsalAccessTokenProvider`, window lifecycle and MAUI `DeviceDisplay` |
@@ -192,22 +196,25 @@ or live model recall.
 
 ### Learner Turn with a Tool Call
 
-The tutor agent decides which learner tools to call; the host only persists and returns data.
+The tutor agent decides which learner tools to call; the host only persists and returns data for
+the authenticated login. Conversation retention is independent of learner ownership.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor learner as Learner
-    participant gateway as Signal gateway
-    participant comms as Comms pipeline
+    participant client as Voice client
+    participant model as Realtime model
     participant runtime as Agentizr agent runtime
     participant tools as Learner tools
     participant store as Learner store
 
-    learner->>gateway: group message
-    gateway->>comms: gRPC delivery
-    comms->>runtime: streamed agent run
-    runtime->>tools: record_vocabulary_review over MCP
+    learner->>client: sign in, then New with retention off
+    client->>runtime: delegated call setup
+    runtime->>runtime: capture app-scoped login identity
+    learner->>model: spoken answer over WebRTC
+    model->>runtime: record_vocabulary_review function call
+    runtime->>tools: authenticated MCP call with captured login identity
     tools->>store: ILearnerStore.GetVocabularyAsync
     alt term is known
         tools->>store: ILearnerStore.SaveVocabularyAsync
@@ -215,9 +222,8 @@ sequenceDiagram
     else unknown term
         tools-->>runtime: McpException
     end
-    runtime-->>comms: response text
-    comms->>gateway: REST send
-    gateway->>learner: reply in the group
+    runtime-->>model: tool result
+    model-->>learner: spoken reply over WebRTC
 ```
 
 ## Spaced-Repetition Lifecycle

@@ -16,7 +16,9 @@ public static partial class AppHost
         if (enabledFeatures.Contains(FeatureNames.Mcp))
         {
             builder.Services.AddCasCapConfiguration<TutorConfig>();
-            builder.Services.AddSingleton<ILearnerStore, RedisLearnerStore>();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<LearnerMcpContext>();
+            builder.Services.AddScoped<ILearnerStore, RedisLearnerStore>();
 
             // Only explicitly listed tool types are exposed; stateless sessions need no affinity.
             var mcpBuilder = builder.Services.AddMcpServer()

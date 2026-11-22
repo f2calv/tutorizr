@@ -1,9 +1,10 @@
 # CasCap.App.Server.Tests
 
-Credential-free .NET 11 unit tests for the tutorizr host, using xUnit v3 on
+Credential-free .NET 11 tests for the tutorizr host, using xUnit v3 on
 Microsoft.Testing.Platform. The tool and scheduling tests use an in-memory store without a running
 web host, Redis instance, Signal gateway or Agentizr runtime. The separate host-startup test loads
-application configuration and requires an isolated environment before execution.
+application configuration and requires an isolated environment before execution. MCP integration
+tests use a temporary loopback host, synthetic Basic credentials and an offline Redis command fixture.
 
 ## Tests
 
@@ -14,17 +15,20 @@ application configuration and requires an isolated environment before execution.
 | [`TutorMcpQueryServiceTests`](Tests/Unit/TutorMcpQueryServiceTests.cs) | 8 | 10 | `Tools` |
 | [`TutorMcpToolAnnotationTests`](Tests/Unit/TutorMcpToolAnnotationTests.cs) | 2 | 2 | `Tools` |
 | [`TutorClientConfigTests`](Tests/Unit/TutorClientConfigTests.cs) | 2 | 6 | `Authentication` |
-| **Total** | **17** | **28** | |
+| [`LearnerMcpContextTests`](Tests/Unit/LearnerMcpContextTests.cs) | 3 | 7 | `Authentication` |
+| [`LearnerMcpPersistenceTests`](Tests/Integration/LearnerMcpPersistenceTests.cs) | 2 | 2 | `Integration` |
+| **Total** | **22** | **37** | |
 
-These are source-declared counts, not execution results. Six theories expand through 17
-`InlineData` rows; the other eleven methods are facts. There are no member/class data providers.
+These are source-declared counts, not execution results. Eight theories expand through 23
+`InlineData` rows; the other fourteen methods are facts. There are no member/class data providers.
 
 ## Traits
 
 | Category | Covers |
 | --- | --- |
 | `Hosting` | Unexpected startup failures return a non-success process result |
-| `Authentication` | Device-entered single/multiple scope parsing, deduplication and missing-scope rejection |
+| `Authentication` | Device scope parsing and learner-context authentication, header and key-pattern validation |
+| `Integration` | Fresh real MCP clients, per-login Redis command isolation and authentication failure without learner access |
 | `Scheduling` | Leitner box promotion, reset and term normalisation |
 | `Tools` | MCP tool behaviour against an in-memory store, and pinned tool hints |
 
@@ -43,6 +47,12 @@ and scheduling cases without invoking host startup:
 dotnet test --project .\src\CasCap.App.Server.Tests\CasCap.App.Server.Tests.csproj --configuration Debug --filter-class CasCap.Tests.Unit.TutorMcpQueryServiceTests CasCap.Tests.Unit.TutorMcpToolAnnotationTests CasCap.Tests.Unit.VocabularyScheduleTests --minimum-expected-tests 21
 ```
 
+For synthetic login-owned MCP persistence and its directly related regressions:
+
+```powershell
+dotnet test --project .\src\CasCap.App.Server.Tests\CasCap.App.Server.Tests.csproj --configuration Debug --filter-class CasCap.Tests.Integration.LearnerMcpPersistenceTests CasCap.Tests.Unit.LearnerMcpContextTests CasCap.Tests.Unit.TutorMcpQueryServiceTests CasCap.Tests.Unit.TutorMcpToolAnnotationTests --minimum-expected-tests 21
+```
+
 `global.json` selects Microsoft.Testing.Platform. The direct test dependencies are `xunit.v3`
 `4.0.3` and `Microsoft.Testing.Extensions.CodeCoverage` `18.12.0`.
 No cloud credentials, emulator or external services are needed. The project removes copied
@@ -57,8 +67,13 @@ and can reach configuration providers before rejecting the invalid cache setting
 normalization, due dates, review promotion/reset, vocabulary updates, mistake retention/filtering,
 selected invalid inputs and the seven learner-tool annotations.
 
-They do not validate Redis transactions, concurrent writes, HTTP Basic authentication, MCP transport,
-health endpoints, gateway delivery, runtime policy or speech providers.
+The MCP integration fixture exercises actual discovery, tool invocation and structured content
+across fresh client connections. It checks correction fields, separate-login profile/vocabulary/mistake
+isolation, missing identity and unauthenticated requests. Its shared Redis command fixture runs the
+real `RedisLearnerStore`, but is not evidence of real Redis persistence or transaction atomicity.
+No existing learner records, runtime definitions or retained conversations are accessed.
+These tests do not validate real Redis transactions, concurrent writes, health endpoints, gateway
+delivery, deployed runtime policy or speech providers. Live two-call verification remains separate.
 The project links the platform-neutral MAUI configuration source to verify scope handling without
 MAUI workloads or MSAL sign-in. It does not verify live tokens, consent or interactive authentication.
 Focused verification passed all six `TutorClientConfigTests` cases, with zero failures or skips.
@@ -71,8 +86,12 @@ client installation or inference was performed.
 Tests/
 ├── InMemoryLearnerStore.cs
 ├── ManualTimeProvider.cs
+├── RedisLearnerTestData.cs
+├── Integration/
+│   └── LearnerMcpPersistenceTests.cs
 └── Unit/
     ├── AppHostTests.cs
+    ├── LearnerMcpContextTests.cs
     ├── TutorMcpQueryServiceTests.cs
     ├── TutorMcpToolAnnotationTests.cs
     └── VocabularyScheduleTests.cs

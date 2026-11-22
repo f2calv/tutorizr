@@ -14,12 +14,12 @@ with Redis and without Key Vault or Signal. For full chat, set
 - A Signal gateway's REST/gRPC addresses, subscriber name and exact chat/monitor group names.
 - An accessible Agentizr runtime with the selected agent definition, session and execution identity.
   The Comms pipeline calls it through [`IAgentRuntimeClient`](https://github.com/f2calv/agentizr/blob/1.6.0/src/CasCap.AgentRuntime.Client/Abstractions/IAgentRuntimeClient.cs).
-- A runtime MCP connection to this host, with matching Basic credentials and explicit permission
-  for the learner-writing tools.
+- A runtime MCP connection to this host, with matching Basic credentials. Learner tools additionally
+  require the login-owned context described in the [authentication guide](../../docs/authentication.md#runtime-to-tutor-host).
 
 Use TLS outside loopback: this host registers Basic authentication but does not configure HTTPS
-redirection or TLS termination itself. All members of the configured group share one learner profile;
-there is no per-sender learner isolation.
+redirection or TLS termination itself. Signal is an admin/debug channel, not a learner identity.
+Learner state belongs to the authenticated voice login; machine-only Signal runs cannot access it.
 
 ## Public Surface
 
@@ -29,6 +29,7 @@ there is no per-sender learner isolation.
 | [`TutorMcpQueryService`](Services/TutorMcpQueryService.cs) | Seven learner tools with structured results |
 | [`ILearnerStore`](Abstractions/ILearnerStore.cs) | Learner persistence abstraction |
 | [`RedisLearnerStore`](Services/RedisLearnerStore.cs) | Redis hashes and sorted sets for levels, vocabulary and mistakes |
+| [`LearnerMcpContext`](Services/LearnerMcpContext.cs) | Resolves the authenticated runtime's opaque login identity; rejects missing or malformed ownership |
 | [`VocabularySchedule`](Services/VocabularySchedule.cs) | Term normalization and Leitner review scheduling |
 | [`LearnerProfile`](Models/LearnerProfile.cs), [`VocabularyItem`](Models/VocabularyItem.cs), [`MistakeEntry`](Models/MistakeEntry.cs) | Tool result records |
 | [`CefrLevel`](Models/CefrLevel.cs), [`MistakeCategory`](Models/MistakeCategory.cs) | Accepted level and mistake classifications |
@@ -41,7 +42,10 @@ tools assume a language tutor. The German tutor is the first example definition 
 
 The configurable MCP path defaults to `/mcp`. It uses stateless Streamable HTTP, requires Basic
 authentication and rejects requests carrying an `Origin` header with 403. Only explicitly registered
-tool types are exposed; there is no assembly-wide tool scan.
+tool types are exposed; there is no assembly-wide tool scan. Discovery does not read learner records.
+Every learner invocation requires `X-AgentRuntime-Caller-Id`, asserted by the authenticated runtime,
+not supplied as a tool argument. Basic credential holders are trusted to assert that identity;
+the header alone does not authenticate a caller.
 
 | Tool | Write semantics | Result |
 | --- | --- | --- |
@@ -61,7 +65,10 @@ All seven tools declare non-destructive, closed-world hints and structured conte
 New vocabulary starts in box 1 and is immediately due. Correct answers promote one box, capped at
 5, and wait 2, 4, 8 or 16 days according to the resulting box. Incorrect answers reset to box 1
 and are due after 10 minutes. Normalized term keys are lowercase with whitespace collapsed.
-Mistakes retain the newest configured window (500 by default); learner keys have no expiry here.
+Mistakes retain the newest configured window (500 by default) per login; learner keys have no expiry here.
+The store and learner context are request-scoped; the Redis connection remains shared.
+All four key patterns end with `:{learner}`, replaced with the app-scoped opaque login identity.
+Old host-wide keys are deliberately unused and left untouched: no fallback, migration or deletion occurs.
 
 The store accepts cancellation tokens but its Redis calls do not pass them through. Reviews are
 read-modify-write operations, not concurrent-update-safe transactions across the entire tool call;
@@ -94,7 +101,7 @@ in place of `:`.
 | `AppConfig` | [`AppConfig`](Models/_AppConfig.cs): MCP path and telemetry; [`AzureAuthConfig`](https://github.com/f2calv/CasCap.Api.Azure/blob/main/src/CasCap.Api.Azure.Auth/Models/_AzureAuthConfig.cs): Key Vault and host Azure credential |
 | `CasCap:HostLifecycleConfig` | `HostLifecycleConfig`: 30-second graceful shutdown budget |
 | `CasCap:FeatureConfig` | [`FeatureConfig`](Models/_FeatureConfig.cs): comma-separated, case-insensitive `Comms` and/or `Mcp`; empty or unknown selections fail |
-| `CasCap:TutorConfig` | [`TutorConfig`](Models/_TutorConfig.cs): target `B1`, four Redis keys, `MaxMistakes=500` (1–100,000); used by Mcp |
+| `CasCap:TutorConfig` | [`TutorConfig`](Models/_TutorConfig.cs): target `B1`, four learner-qualified Redis key patterns, `MaxMistakes=500` (1–100,000) per login; used by Mcp |
 | `CasCap:ApiAuthConfig` | [`ApiAuthConfig`](https://github.com/f2calv/CasCap.Common/blob/main/src/CasCap.Common.Abstractions/Models/_ApiAuthConfig.cs): MCP Basic credentials |
 | `CasCap:CachingConfig` | Redis connection required even in MCP-only mode |
 | `CasCap:CommsConfig` | [`CommsConfig`](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms/Models/_CommsConfig.cs): groups, agent/session selection, communications stream and monitor behavior |
@@ -135,10 +142,10 @@ identity, a deployed agent definition or speech backends:
     "AgentRuntimeClientOptions": { "BaseAddress": "https://runtime.example.com" },
     "TutorConfig": {
       "TargetLevel": "B1",
-      "ProfileKey": "example:snapshot:profile",
-      "VocabularyKey": "example:snapshot:vocabulary",
-      "VocabularyDueKey": "example:series:vocabulary-due",
-      "MistakesKey": "example:series:mistakes",
+      "ProfileKey": "example:snapshot:profile:{learner}",
+      "VocabularyKey": "example:snapshot:vocabulary:{learner}",
+      "VocabularyDueKey": "example:series:vocabulary-due:{learner}",
+      "MistakesKey": "example:series:mistakes:{learner}",
       "MaxMistakes": 500
     }
   }
@@ -154,6 +161,9 @@ revisions. The Debug solution includes those sources.
 
 Release references pin the published shared hosting, caching, configuration, Azure authentication
 and Comms AI packages, so the Release build and the root Dockerfile need no adjacent checkouts.
+Login-owned MCP context requires the coordinated Agent Runtime contracts change: publish that
+package and advance the consumer pin before a Release deployment. The current Debug sources
+validate this integration; the existing `1.7.0` contracts release does not contain the new header contract.
 
 The direct MCP package is `ModelContextProtocol.AspNetCore` `2.4.0`; other package versions are
 centralized in [Directory.Packages.props](../../Directory.Packages.props). See the
@@ -172,4 +182,5 @@ graph LR
     Host --> Config[CasCap.Common.Configuration 5.2.0]
     Host --> Hosting[CasCap.Common.Hosting.AspNetCore 5.2.0]
     Host --> MCP[ModelContextProtocol.AspNetCore 2.4.0]
+    Host --> Contracts[CasCap.AgentRuntime.Contracts]
 ```

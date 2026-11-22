@@ -188,7 +188,23 @@ The `Mcp` role exposes the learner tools at `/mcp`. The endpoint requires Basic 
 `CasCap:ApiAuthConfig` and rejects any request with an `Origin` header with `403`, because the
 runtime sends none and a browser always does. The runtime holds the matching credential as a
 tenant MCP credential and sends it only on calls to this host, both for chat runs and for realtime
-call tools.
+call tools. Learner calls additionally require a login identity captured by the runtime during
+realtime call setup, independently of conversation retention.
+
+Enable `callerIdentityEnabled: true` on the learner `ToolSource` in the runtime definition, with
+its endpoint credential and explicit learner-tool allowlists. This is opt-in per trusted source;
+the runtime does not send caller identity to other MCP endpoints. It requires validated delegated
+`scp`, issuer and subject claims, preferring Entra `oid` over client-specific `sub`. The runtime
+hashes a versioned, unambiguous tuple of app tenant, issuer and subject into a lowercase SHA-256
+`X-AgentRuntime-Caller-Id` header, captured once for the call. The login is not a tool argument,
+email address, conversation ID or device ID.
+
+Tutorizr trusts this header only after Basic authentication and requires exactly one 64-character
+lowercase hex value. The runtime credential is the assertion trust boundary: anyone holding it
+can impersonate a caller, so keep it secret and use HTTPS outside isolated loopback.
+Each Redis key ends with this opaque identity. Missing identity fails the learner tool before any
+learner data command; there is no shared profile fallback. Signal's machine identity is admin/debug-only
+and cannot access learner state. Old shared keys are left untouched and unused.
 
 ```mermaid
 sequenceDiagram
@@ -197,17 +213,21 @@ sequenceDiagram
     participant Mcp as Tutor host /mcp
     participant Tools as Learner tools
 
-    Runtime->>Mcp: Tool call, Authorization: Basic credentials
+    Runtime->>Mcp: Tool call, Basic credentials and opaque login context
     alt Credentials invalid
         Mcp-->>Runtime: 401 Unauthorized
     else Origin header present
         Mcp-->>Runtime: 403 Forbidden
     else Authorized
-        Mcp->>Tools: Invoke tool
-        Tools-->>Mcp: Structured result
-        Mcp-->>Runtime: Tool result
+        alt Learner identity missing or malformed
+            Mcp-->>Runtime: Learner tool error; no learner data access
+        else Valid learner identity
+            Mcp->>Tools: Invoke tool with request-owned learner context
+            Tools-->>Mcp: Structured result
+            Mcp-->>Runtime: Tool result
+        end
     end
 ```
 
-The tools trust the runtime to have authorized the learner or the chat group; they never log
+The tools trust the runtime to have authorized the login; they never log
 learner content, and they bound list sizes and text lengths themselves.

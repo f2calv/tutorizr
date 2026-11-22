@@ -6,10 +6,11 @@ published to the runtime, so the same host can tutor any language, school subjec
 publishing a different definition. tutorizr supplies the parts a runtime does not own: the channels
 a learner reaches the tutor through and the learner-progress tools the tutor calls.
 
-- **Chat and voice notes:** a .NET 11 host relays a Signal group's conversation, including transcribed
+- **Admin/debug chat:** a .NET 11 host relays a Signal group's conversation, including transcribed
   voice notes, to the runtime through the [Comms pipeline](https://github.com/f2calv/signalizr/blob/1.3.0/src/CasCap.Comms.AI/README.md).
+  Signal is not a learner identity and cannot access learner progress.
 - **Learner progress:** the same host exposes learner-progress tools over Model Context Protocol (MCP),
-  backed by Redis, which the runtime calls during a lesson.
+  backed by per-login Redis keys, which the runtime calls during a voice lesson.
 - **Live voice:** a .NET 11 MAUI client for Android and Windows holds continuous, interruptible voice calls through Agentizr's
   brokered realtime calls ([agentizr#29](https://github.com/f2calv/agentizr/pull/29)): the runtime applies
   the tutor definition and runs its tools, while audio flows over WebRTC between the client and Azure OpenAI.
@@ -24,7 +25,7 @@ repository ships no tutor definition, model, word lists or exam material.
 | Unit | Purpose | Availability |
 | --- | --- | --- |
 | [Application host](src/CasCap.App.Server/README.md) | Signal communications and authenticated learner MCP tools | Release uses published packages; Debug uses adjacent sources |
-| [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling and annotation checks | 15 methods, 22 source-declared cases |
+| [Host tests](src/CasCap.App.Server.Tests/README.md) | Offline tool, scheduling, identity and MCP transport checks | 22 methods, 37 source-declared cases |
 | [Live voice client](src/CasCap.App.Maui/Pages/ConversationPage.xaml.cs) | .NET MAUI on Android and Windows; New, optional Resume, Mute and End, foreground keep-awake and bounded WebRTC recovery | Resume requires matching runtime changes; see [voice lifecycle](docs/architecture.md#voice-call-lifecycle) |
 | [Kubernetes chart](charts/tutorizr/README.md) | Single-subscriber workload configuration | Published OCI chart; authentication required; defaults to zero replicas |
 
@@ -59,7 +60,10 @@ $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project .\src\CasCap.App.Server\CasCap.App.Server.csproj --configuration Debug --no-launch-profile -- --urls http://localhost:5080
 ```
 
-An MCP client can then connect to `http://localhost:5080/mcp` with HTTP Basic authentication.
+An MCP client can then discover tools at `http://localhost:5080/mcp` with HTTP Basic authentication.
+Learner invocations also require trusted runtime login context; see the
+[ownership contract](docs/authentication.md#runtime-to-tutor-host). For offline persistence verification,
+use the [synthetic MCP tests](src/CasCap.App.Server.Tests/README.md#running), not an existing learner's account.
 `/healthz` is anonymous. This path starts no Signal subscriber and requires no cloud provider.
 The [host README](src/CasCap.App.Server/README.md) gives the tool contract, configuration precedence
 and full chat prerequisites.
@@ -98,12 +102,12 @@ flowchart LR
     classDef person fill:#ede9fe,stroke:#6d28d9,color:#2e1065
     classDef external fill:#fef3c7,stroke:#d97706,color:#78350f
 
-    learners([Learners in a Signal group]):::person <-->|Signal| gateway[Signal gateway]:::external
+    admins([Administrators in a Signal group]):::person <-->|Signal| gateway[Signal gateway]:::external
     voiceLearner([Learner on a phone or PC]):::person <-->|speech| client
     gateway -->|"gRPC deliveries"| tutorizr[tutorizr<br/>tutor host]:::system
     tutorizr -->|"REST replies"| gateway
     tutorizr -->|"streamed agent runs"| runtime[Agentizr agent runtime<br/>tutor definition, sessions]:::external
-    runtime -->|"learner tools over MCP"| tutorizr
+    runtime -->|"MCP tools; learner calls carry login context"| tutorizr
     tutorizr -.->|"optional transcription and speech"| speech[Speech providers]:::external
     client[tutorizr live voice client<br/>proof of concept]:::system <-->|"realtime audio"| realtime[Azure OpenAI realtime model]:::external
     client -->|"call setup and hang-up"| runtime
@@ -115,8 +119,9 @@ subscriber for the group, with non-overlapping rollouts. When both features are 
 also exposes the shared poll tools; MCP-only mode exposes just the seven learner tools.
 
 The live voice client sends its WebRTC offer and optional voice-conversation reference to Agentizr's
-brokered realtime calls; the runtime applies the tutor definition and calls the same learner tools
-as the chat path. The [voice lifecycle](docs/architecture.md#voice-call-lifecycle) explains connection
+brokered realtime calls; the runtime applies the tutor definition and calls login-owned learner tools.
+Signal remains an admin/debug path without learner ownership.
+The [voice lifecycle](docs/architecture.md#voice-call-lifecycle) explains connection
 recovery, screen changes and explicit resumption.
 
 ## Subjects and the Example Tutor
